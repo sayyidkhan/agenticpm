@@ -26,6 +26,8 @@ export function ProjectHistory() {
     deleteProject,
     renameProject,
     refreshProjects,
+    saveAll,
+    hasUnsavedChanges,
   } = useProject();
 
   const [renamingFile, setRenamingFile] = useState<string | null>(null);
@@ -41,6 +43,10 @@ export function ProjectHistory() {
 
   const handleDownload = async (fileName: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Flush any pending saves before downloading so the file on disk is up-to-date
+    if (hasUnsavedChanges && fileName === activeFileName) {
+      await saveAll();
+    }
     window.open(`/api/projects/${encodeURIComponent(fileName)}/download`, "_blank");
   };
 

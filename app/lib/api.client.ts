@@ -53,6 +53,7 @@ export async function saveProjectSheets(
     timeline?: TimelineEntry[];
     info?: string;
     projectName?: string;
+    sprintConfig?: import("~/types/project").SprintConfig;
   }
 ): Promise<ProjectMeta> {
   const res = await fetch(`/api/projects/${encodeURIComponent(fileName)}`, {

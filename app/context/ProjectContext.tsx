@@ -306,11 +306,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // Save all (full write)
   const saveAllInternal = async () => {
-    if (!activeFileName || !parsed) return;
+    const currentParsed = parsedRef.current;
+    const currentText = canonicalTextRef.current;
+    if (!activeFileName || !currentParsed) return;
     setIsSaving(true);
     try {
-      await saveProjectFull(activeFileName, canonicalText, parsed, activeProjectName || undefined);
-      snapshotSavedState(canonicalText, parsed);
+      await saveProjectFull(activeFileName, currentText, currentParsed, activeProjectName || undefined);
+      snapshotSavedState(currentText, currentParsed);
       await refreshProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -349,6 +351,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setCanonicalTextRaw(text);
     try {
       const result = parseProjectText(text);
+      // Preserve info from current parsed state — parseProjectText doesn't handle info
+      const currentInfo = parsedRef.current?.info;
+      if (currentInfo !== undefined && result.info === undefined) {
+        result.info = currentInfo;
+      }
       setParsed(result);
       setError(null);
     } catch {
@@ -425,7 +432,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const saveAll = useCallback(async () => {
     await saveAllInternal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFileName, parsed, canonicalText, activeProjectName]);
+  }, [activeFileName, activeProjectName]);
 
   const setInfo = useCallback((info: string) => {
     if (!parsed) return;
@@ -434,28 +441,31 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [parsed]);
 
   const saveSheet = useCallback(async (sheet: "source" | "people" | "tasks" | "timeline" | "info") => {
-    if (!activeFileName || !parsed) return;
+    // Read from refs to avoid stale closures when called right after setCanonicalText/setParsed
+    const currentParsed = parsedRef.current;
+    const currentText = canonicalTextRef.current;
+    if (!activeFileName || !currentParsed) return;
     setIsSaving(true);
     try {
       const changes: Record<string, unknown> = {};
       // Always include source so the Source sheet stays in sync
-      changes.source = canonicalText;
-      if (sheet === "people") changes.people = parsed.people;
-      if (sheet === "tasks") changes.tasks = parsed.tasks;
+      changes.source = currentText;
+      if (sheet === "people") changes.people = currentParsed.people;
+      if (sheet === "tasks") changes.tasks = currentParsed.tasks;
       if (sheet === "timeline") {
-        changes.timeline = parsed.timeline;
-        changes.sprintConfig = parsed.sprintConfig;
+        changes.timeline = currentParsed.timeline;
+        changes.sprintConfig = currentParsed.sprintConfig;
       }
-      if (sheet === "info") changes.info = parsed.info || "";
+      if (sheet === "info") changes.info = currentParsed.info || "";
 
       await saveProjectSheets(activeFileName, changes as Parameters<typeof saveProjectSheets>[1]);
       // Update snapshot for the saved sheet (source is always saved)
       const saved = lastSavedRef.current;
-      saved.canonicalText = canonicalText;
-      if (sheet === "people") saved.people = JSON.parse(JSON.stringify(parsed.people));
-      if (sheet === "tasks") saved.tasks = JSON.parse(JSON.stringify(parsed.tasks));
-      if (sheet === "timeline") saved.timeline = JSON.parse(JSON.stringify(parsed.timeline));
-      if (sheet === "info") saved.info = parsed.info || "";
+      saved.canonicalText = currentText;
+      if (sheet === "people") saved.people = JSON.parse(JSON.stringify(currentParsed.people));
+      if (sheet === "tasks") saved.tasks = JSON.parse(JSON.stringify(currentParsed.tasks));
+      if (sheet === "timeline") saved.timeline = JSON.parse(JSON.stringify(currentParsed.timeline));
+      if (sheet === "info") saved.info = currentParsed.info || "";
       checkUnsavedChanges();
       await refreshProjects();
     } catch (err) {
@@ -463,7 +473,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  }, [activeFileName, parsed, canonicalText, checkUnsavedChanges, refreshProjects]);
+  }, [activeFileName, checkUnsavedChanges, refreshProjects]);
 
   const createFromPrompt = useCallback(async (prompt: string) => {
     setIsLoading(true);
@@ -506,8 +516,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const currentSprint = parsed?.currentSprint;
+      const currentInfo = parsed?.info;
       const newText = await aiUpdateProject(canonicalText, instruction, currentSprint);
       const result = parseProjectText(newText);
+      // Preserve info — parseProjectText doesn't handle info
+      if (currentInfo !== undefined && result.info === undefined) {
+        result.info = currentInfo;
+      }
       setCanonicalTextRaw(newText);
       setParsed(result);
       // Auto-save will trigger via useEffect

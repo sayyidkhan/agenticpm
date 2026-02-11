@@ -48,7 +48,9 @@ export async function action({ params, request }: Route.ActionArgs) {
         people?: import("~/types/project").Person[];
         tasks?: import("~/types/project").Task[];
         timeline?: import("~/types/project").TimelineEntry[];
+        info?: string;
         projectName?: string;
+        sprintConfig?: import("~/types/project").SprintConfig;
       };
     };
     const meta = await updateProjectSheets(fileName, changes);
