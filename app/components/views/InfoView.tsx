@@ -40,7 +40,7 @@ function renderMarkdown(text: string): string {
 }
 
 export function InfoView() {
-  const { parsed, setInfo } = useProject();
+  const { parsed, setInfo, isReadOnly } = useProject();
   const [isEditing, setIsEditing] = useState(false);
   const info = parsed?.info || "";
 
@@ -51,24 +51,26 @@ export function InfoView() {
         <span className="text-sm font-medium text-muted-foreground">
           Project Info
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsEditing(!isEditing)}
-          className="gap-1.5"
-        >
-          {isEditing ? (
-            <>
-              <Eye className="h-3.5 w-3.5" />
-              Preview
-            </>
-          ) : (
-            <>
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </>
-          )}
-        </Button>
+        {!isReadOnly && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+            className="gap-1.5"
+          >
+            {isEditing ? (
+              <>
+                <Eye className="h-3.5 w-3.5" />
+                Preview
+              </>
+            ) : (
+              <>
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Content */}

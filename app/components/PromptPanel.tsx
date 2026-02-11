@@ -9,7 +9,7 @@ export interface PromptPanelHandle {
 }
 
 export const PromptPanel = forwardRef<PromptPanelHandle>(function PromptPanel(_, ref) {
-  const { createFromPrompt, updateFromPrompt, isLoading, activeFileName, parsed } = useProject();
+  const { createFromPrompt, updateFromPrompt, isLoading, activeFileName, parsed, isReadOnly } = useProject();
   const [prompt, setPrompt] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showAmbiguityDialog, setShowAmbiguityDialog] = useState(false);
@@ -125,13 +125,13 @@ export const PromptPanel = forwardRef<PromptPanelHandle>(function PromptPanel(_,
                     : "Describe your project: e.g. 'Build a chat app with 3 engineers over 6 weeks'\n(Shift+Enter for new line, Enter to send)"
                 }
                 className="w-full min-h-[44px] max-h-[200px] rounded-lg border border-input bg-background px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                disabled={isLoading}
+                disabled={isLoading || isReadOnly}
                 rows={1}
               />
             </div>
             <button
               type="submit"
-              disabled={isLoading || !prompt.trim()}
+              disabled={isLoading || isReadOnly || !prompt.trim()}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors mt-auto"
             >
               {isLoading ? (

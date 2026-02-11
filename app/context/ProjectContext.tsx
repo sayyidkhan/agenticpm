@@ -24,6 +24,7 @@ interface ProjectContextType {
   hasUnsavedChanges: boolean;
   canUndo: boolean;
   isLocked: boolean;
+  isReadOnly: boolean;
 
   // Active project
   activeFileName: string | null;
@@ -71,6 +72,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [isLocked, setIsLocked] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   // Undo history (stored in localStorage, cleared on mount)
   const [undoHistory, setUndoHistory] = useState<Array<{ text: string; parsed: ProjectData }>>(() => {
@@ -131,7 +133,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   // Refresh lock periodically to keep it active
   useEffect(() => {
-    if (!activeFileName) return;
+    if (!activeFileName || isReadOnly) return;
 
     // Refresh lock every 3 seconds (lock expires after 5s of inactivity)
     const refreshInterval = setInterval(async () => {
@@ -220,15 +222,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     setIsLocked(false);
+    setIsReadOnly(false);
     try {
       // Acquire lock
       const lockResult = await acquireLock(fileName, sessionId);
-      if (!lockResult.success) {
-        setError(`Project is locked by another session.`);
-        setIsLocked(true);
-        setIsLoading(false);
-        return;
-      }
+      const readOnly = !lockResult.success;
 
       const result = await fetchProject(fileName);
       if (!result) {
@@ -243,6 +241,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       setParsed(result.data);
       snapshotSavedState(result.canonicalText, result.data);
       localStorage.setItem("pm_active_file", fileName);
+
+      if (readOnly) {
+        setIsReadOnly(true);
+        setIsLocked(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load project");
     } finally {
@@ -486,6 +489,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         activeProjectName,
         projects,
         isLocked,
+        isReadOnly,
         refreshProjects,
         setCanonicalText,
         setInfo,

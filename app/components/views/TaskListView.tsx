@@ -55,7 +55,7 @@ function RemarksInput({ value, onChange, onSave }: { value: string; onChange: (t
 }
 
 export function TaskListView() {
-  const { parsed, setCanonicalText, saveSheet } = useProject();
+  const { parsed, setCanonicalText, saveSheet, isReadOnly } = useProject();
   const [isEditing, setIsEditing] = useState(false);
   const [editTasks, setEditTasks] = useState<Task[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -120,6 +120,7 @@ export function TaskListView() {
   };
 
   const toggleTaskStatus = async (taskIndex: number) => {
+    if (isReadOnly) return;
     const task = parsed.tasks[taskIndex];
     let newStatus: Task["status"];
     
@@ -141,6 +142,7 @@ export function TaskListView() {
   };
 
   const updateTaskAssignee = async (taskIndex: number, newAssignee: string | null) => {
+    if (isReadOnly) return;
     const task = parsed.tasks[taskIndex];
     const updatedTasks = [...parsed.tasks];
     updatedTasks[taskIndex] = { ...task, assignee: newAssignee };
@@ -230,15 +232,17 @@ export function TaskListView() {
               {allCollapsed ? "Expand All" : "Collapse All"}
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            className="gap-1.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Task
-          </Button>
+          {!isReadOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              className="gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Task
+            </Button>
+          )}
         </div>
       </div>
 

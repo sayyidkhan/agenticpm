@@ -7,7 +7,7 @@ import type { TimelineEntry, SprintConfig } from "~/types/project";
 import { Calendar, Plus, X, Edit2, Save, Settings } from "lucide-react";
 
 export function TimelineView() {
-  const { parsed, setCanonicalText, saveSheet } = useProject();
+  const { parsed, setCanonicalText, saveSheet, isReadOnly } = useProject();
   const [isEditing, setIsEditing] = useState(false);
   const [editEntries, setEditEntries] = useState<TimelineEntry[]>([]);
   const [editSprintConfig, setEditSprintConfig] = useState<SprintConfig>({ duration: 2 });
@@ -110,7 +110,7 @@ export function TimelineView() {
           <span className="text-sm text-muted-foreground">({totalEntries} entries)</span>
         </div>
         {!isEditing ? (
-          <Button variant="outline" size="sm" onClick={startEditing}>
+          !isReadOnly && <Button variant="outline" size="sm" onClick={startEditing}>
             <Edit2 className="h-3.5 w-3.5 mr-1.5" />
             Edit
           </Button>

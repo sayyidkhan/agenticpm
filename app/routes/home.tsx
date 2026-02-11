@@ -78,7 +78,7 @@ export default function Home() {
 
 function AppLayout() {
   const navigate = useNavigate();
-  const { parsed, error, isSaving, hasUnsavedChanges, canUndo, undo, saveAll, activeFileName, activeProjectName, setCurrentSprint, isLocked, sessionId } = useProject();
+  const { parsed, error, isSaving, hasUnsavedChanges, canUndo, undo, saveAll, activeFileName, activeProjectName, setCurrentSprint, isLocked, isReadOnly, sessionId } = useProject();
   const promptPanelRef = useRef<PromptPanelHandle>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -176,7 +176,7 @@ function AppLayout() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          {hasProject && (
+          {hasProject && !isReadOnly && (
             <>
               <Button
                 variant={hasUnsavedChanges ? "default" : "outline"}
@@ -298,6 +298,16 @@ function AppLayout() {
             </Tabs>
           )}
 
+          {/* Read-only banner */}
+          {isReadOnly && (
+            <div className="border-t border-yellow-500/50 bg-yellow-500/10 px-4 py-2 text-sm text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+              <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span><strong>Read-only mode</strong> — This project is being edited by another user. You can view but not edit.</span>
+            </div>
+          )}
+
           {/* Error display */}
           {error && (
             <div className="border-t border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive">
@@ -310,30 +320,6 @@ function AppLayout() {
         </div>
       </div>
 
-      {/* Full-page lock overlay */}
-      {isLocked && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg border shadow-2xl p-8 max-w-md w-full mx-4 text-center">
-            <div className="mb-4 flex justify-center">
-              <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
-                <svg className="h-8 w-8 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Project Locked</h2>
-            <p className="text-muted-foreground mb-6">
-              This project is currently being edited in another session. Please try again later or contact the other user.
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              Go Back to Projects
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

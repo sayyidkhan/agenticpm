@@ -7,7 +7,7 @@ import type { Person } from "~/types/project";
 import { Users, Plus, X, Edit2, Save } from "lucide-react";
 
 export function PeopleView() {
-  const { parsed, setCanonicalText, saveSheet } = useProject();
+  const { parsed, setCanonicalText, saveSheet, isReadOnly } = useProject();
   const [isEditing, setIsEditing] = useState(false);
   const [editPeople, setEditPeople] = useState<Person[]>([]);
 
@@ -62,7 +62,7 @@ export function PeopleView() {
           <span className="text-sm text-muted-foreground">({parsed.people.length})</span>
         </div>
         {!isEditing ? (
-          <Button variant="outline" size="sm" onClick={startEditing}>
+          !isReadOnly && <Button variant="outline" size="sm" onClick={startEditing}>
             <Edit2 className="h-3.5 w-3.5 mr-1.5" />
             Edit
           </Button>
