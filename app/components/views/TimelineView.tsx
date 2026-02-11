@@ -234,7 +234,7 @@ export function TimelineView() {
               </div>
               
               {/* Rows */}
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {parsed.timeline.map((entry, i) => {
                   const planned = getBarPosition(entry.startDate, entry.endDate);
                   const actual = getBarPosition(entry.actualStartDate, entry.actualEndDate);
@@ -248,55 +248,63 @@ export function TimelineView() {
                         <span className="text-[11px] font-medium truncate block">{entry.label}</span>
                       </div>
                       
-                      {/* Chart area */}
-                      <div className="flex-1 relative h-8">
-                        {/* Grid lines */}
-                        {weekMarkers.map((marker, j) => (
-                          <div
-                            key={j}
-                            className="absolute top-0 bottom-0 border-l border-muted-foreground/10"
-                            style={{ left: `${marker.position}%` }}
-                          />
-                        ))}
-                        
-                        {/* Planned bar (background) */}
-                        {planned && (
-                          <div
-                            className="absolute top-1 h-6 rounded bg-primary/20 border border-primary/30"
-                            style={{ left: `${planned.left}%`, width: `${planned.width}%` }}
-                            title={`Planned: ${entry.startDate} → ${entry.endDate}`}
-                          />
-                        )}
-                        
-                        {/* Actual bar (overlaid on top of planned) */}
-                        {actual && (
-                          <div
-                            className={`absolute top-2 h-4 rounded ${
-                              endVariance !== null && endVariance > 0 
-                                ? 'bg-red-500/80' 
-                                : 'bg-green-500/80'
-                            }`}
-                            style={{ left: `${actual.left}%`, width: `${actual.width}%` }}
-                            title={`Actual: ${entry.actualStartDate} → ${entry.actualEndDate}`}
-                          >
-                            {/* Progress fill inside actual bar */}
-                            {progress > 0 && progress < 100 && (
-                              <div
-                                className="h-full rounded-l bg-white/30"
-                                style={{ width: `${progress}%` }}
-                              />
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* If no actual bar, show progress on planned bar */}
-                        {!actual && planned && progress > 0 && (
-                          <div
-                            className="absolute top-2 h-4 rounded bg-primary"
-                            style={{ left: `${planned.left}%`, width: `${planned.width * (progress / 100)}%` }}
-                            title={`Progress: ${progress}%`}
-                          />
-                        )}
+                      {/* Chart area — two sub-rows: planned on top, actual on bottom */}
+                      <div className="flex-1 flex flex-col">
+                        {/* Planned row */}
+                        <div className="relative h-4">
+                          {/* Grid lines */}
+                          {weekMarkers.map((marker, j) => (
+                            <div
+                              key={j}
+                              className="absolute top-0 bottom-0 border-l border-muted-foreground/10"
+                              style={{ left: `${marker.position}%` }}
+                            />
+                          ))}
+                          {planned && (
+                            <div
+                              className="absolute top-0.5 h-3 rounded bg-primary/20 border border-primary/30"
+                              style={{ left: `${planned.left}%`, width: `${planned.width}%` }}
+                              title={`Planned: ${entry.startDate} → ${entry.endDate}`}
+                            />
+                          )}
+                        </div>
+                        {/* Actual row */}
+                        <div className="relative h-4">
+                          {/* Grid lines */}
+                          {weekMarkers.map((marker, j) => (
+                            <div
+                              key={j}
+                              className="absolute top-0 bottom-0 border-l border-muted-foreground/10"
+                              style={{ left: `${marker.position}%` }}
+                            />
+                          ))}
+                          {actual && (
+                            <div
+                              className={`absolute top-0.5 h-3 rounded ${
+                                endVariance !== null && endVariance > 0 
+                                  ? 'bg-red-500/80' 
+                                  : 'bg-green-500/80'
+                              }`}
+                              style={{ left: `${actual.left}%`, width: `${actual.width}%` }}
+                              title={`Actual: ${entry.actualStartDate} → ${entry.actualEndDate}`}
+                            >
+                              {progress > 0 && progress < 100 && (
+                                <div
+                                  className="h-full rounded-l bg-white/30"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {/* If no actual bar, show progress on planned range */}
+                          {!actual && planned && progress > 0 && (
+                            <div
+                              className="absolute top-0.5 h-3 rounded bg-primary"
+                              style={{ left: `${planned.left}%`, width: `${planned.width * (progress / 100)}%` }}
+                              title={`Progress: ${progress}%`}
+                            />
+                          )}
+                        </div>
                       </div>
                       
                       {/* Progress + Variance */}

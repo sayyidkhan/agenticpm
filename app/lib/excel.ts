@@ -204,35 +204,41 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
 
   currentRow++;
 
-  // --- Gantt rows ---
+  // --- Gantt rows (two rows per entry: planned on top, actual on bottom) ---
   for (const entry of entries) {
-    const row = ws.getRow(currentRow);
-    row.height = 22;
+    const plannedRow = ws.getRow(currentRow);
+    const actualRow = ws.getRow(currentRow + 1);
+    plannedRow.height = 16;
+    actualRow.height = 16;
 
-    const labelCell = row.getCell(LABEL_COL);
+    // Label spans both rows
+    ws.mergeCells(currentRow, LABEL_COL, currentRow + 1, LABEL_COL);
+    const labelCell = plannedRow.getCell(LABEL_COL);
     labelCell.value = entry.label;
     labelCell.font = { bold: true, size: 9 };
     labelCell.alignment = { vertical: "middle" };
 
-    // Monday grid lines
+    // Monday grid lines on both rows
     for (let d = 0; d < totalDays; d++) {
       const dayDate = new Date(minDate);
       dayDate.setDate(dayDate.getDate() + d);
       if (dayDate.getDay() === 1) {
-        row.getCell(DAY_START_COL + d).border = { left: { style: "thin" as const, color: { argb: BORDER_COLOR } } };
+        const borderStyle = { left: { style: "thin" as const, color: { argb: BORDER_COLOR } } };
+        plannedRow.getCell(DAY_START_COL + d).border = borderStyle;
+        actualRow.getCell(DAY_START_COL + d).border = borderStyle;
       }
     }
 
-    // Planned bar
+    // Planned bar (top row)
     if (entry.startDate && entry.endDate) {
       const startCol = dateToCol(entry.startDate);
       const endCol = dateToCol(entry.endDate);
       for (let c = startCol; c <= endCol; c++) {
-        row.getCell(c).fill = solidFill(PRIMARY_BAR);
+        plannedRow.getCell(c).fill = solidFill(PRIMARY_BAR);
       }
     }
 
-    // Actual bar
+    // Actual bar (bottom row)
     if (entry.actualStartDate && entry.actualEndDate) {
       let barColor = ACTUAL_BAR;
       if (entry.endDate) {
@@ -245,7 +251,7 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
       const startCol = dateToCol(entry.actualStartDate);
       const endCol = dateToCol(entry.actualEndDate);
       for (let c = startCol; c <= endCol; c++) {
-        row.getCell(c).fill = solidFill(barColor);
+        actualRow.getCell(c).fill = solidFill(barColor);
       }
     } else if (entry.startDate && entry.endDate && (entry.percentage ?? 0) > 0) {
       const startCol = dateToCol(entry.startDate);
@@ -253,11 +259,12 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
       const barLen = endCol - startCol + 1;
       const progressCols = Math.round(barLen * ((entry.percentage ?? 0) / 100));
       for (let c = startCol; c < startCol + progressCols; c++) {
-        row.getCell(c).fill = solidFill(ACTUAL_BAR);
+        actualRow.getCell(c).fill = solidFill(ACTUAL_BAR);
       }
     }
 
-    // Summary column
+    // Summary column spans both rows
+    ws.mergeCells(currentRow, SUMMARY_COL, currentRow + 1, SUMMARY_COL);
     const progress = entry.percentage ?? 0;
     let summaryText = `${progress}%`;
     let summaryColor = PRIMARY;
@@ -269,12 +276,12 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
       else if (variance < 0) { summaryText += ` ${variance}d`; summaryColor = GREEN; }
       else { summaryText += " on time"; summaryColor = GREEN; }
     }
-    const summaryCell = row.getCell(SUMMARY_COL);
+    const summaryCell = plannedRow.getCell(SUMMARY_COL);
     summaryCell.value = summaryText;
     summaryCell.font = { bold: true, size: 9, color: { argb: summaryColor } };
     summaryCell.alignment = { horizontal: "center", vertical: "middle" };
 
-    currentRow++;
+    currentRow += 2;
   }
 }
 
