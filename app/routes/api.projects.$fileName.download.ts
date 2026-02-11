@@ -1,8 +1,5 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { Route } from "./+types/api.projects.$fileName.download";
-
-const STORAGE_DIR = path.resolve(process.cwd(), "storage");
+import { getStorage } from "~/lib/storage";
 
 export async function loader({ params }: Route.LoaderArgs) {
   const fileName = params.fileName;
@@ -10,14 +7,14 @@ export async function loader({ params }: Route.LoaderArgs) {
     return new Response("Missing fileName", { status: 400 });
   }
 
-  const filePath = path.join(STORAGE_DIR, fileName);
-  if (!fs.existsSync(filePath)) {
+  const storage = getStorage();
+  if (!(await storage.exists(fileName))) {
     return new Response("File not found", { status: 404 });
   }
 
-  const fileBuffer = fs.readFileSync(filePath);
+  const fileBuffer = await storage.read(fileName);
   
-  return new Response(fileBuffer, {
+  return new Response(new Uint8Array(fileBuffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

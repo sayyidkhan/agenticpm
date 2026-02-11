@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.projects.$fileName.rename";
-import { renameProject } from "~/lib/excel.server";
+import { renameProject } from "~/lib/excel";
 
 // POST /api/projects/:fileName/rename
 export async function action({ params, request }: Route.ActionArgs) {

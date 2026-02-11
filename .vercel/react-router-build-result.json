@@ -1,0 +1,285 @@
+{
+  "buildManifest": {
+    "serverBundles": {
+      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
+        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    },
+    "routeIdToServerBundleId": {
+      "routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/login": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.auth.login": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.auth.logout": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.projects": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.projects.upload": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.projects.$fileName": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.projects.$fileName.lock": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.projects.$fileName.rename": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.projects.$fileName.download": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.ai": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "app/root.tsx",
+        "path": "",
+        "config": {}
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "root",
+        "file": "app/routes/home.tsx",
+        "index": true,
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/login": {
+        "id": "routes/login",
+        "parentId": "root",
+        "file": "app/routes/login.tsx",
+        "path": "login",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.auth.login": {
+        "id": "routes/api.auth.login",
+        "parentId": "root",
+        "file": "app/routes/api.auth.login.ts",
+        "path": "api/auth/login",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.auth.logout": {
+        "id": "routes/api.auth.logout",
+        "parentId": "root",
+        "file": "app/routes/api.auth.logout.ts",
+        "path": "api/auth/logout",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.projects": {
+        "id": "routes/api.projects",
+        "parentId": "root",
+        "file": "app/routes/api.projects.ts",
+        "path": "api/projects",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.projects.upload": {
+        "id": "routes/api.projects.upload",
+        "parentId": "root",
+        "file": "app/routes/api.projects.upload.ts",
+        "path": "api/projects/upload",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.projects.$fileName": {
+        "id": "routes/api.projects.$fileName",
+        "parentId": "root",
+        "file": "app/routes/api.projects.$fileName.ts",
+        "path": "api/projects/:fileName",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.projects.$fileName.lock": {
+        "id": "routes/api.projects.$fileName.lock",
+        "parentId": "root",
+        "file": "app/routes/api.projects.$fileName.lock.ts",
+        "path": "api/projects/:fileName/lock",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.projects.$fileName.rename": {
+        "id": "routes/api.projects.$fileName.rename",
+        "parentId": "root",
+        "file": "app/routes/api.projects.$fileName.rename.ts",
+        "path": "api/projects/:fileName/rename",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.projects.$fileName.download": {
+        "id": "routes/api.projects.$fileName.download",
+        "parentId": "root",
+        "file": "app/routes/api.projects.$fileName.download.ts",
+        "path": "api/projects/:fileName/download",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.ai": {
+        "id": "routes/api.ai",
+        "parentId": "root",
+        "file": "app/routes/api.ai.ts",
+        "path": "api/ai",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    }
+  },
+  "reactRouterConfig": {
+    "appDirectory": "/Users/sayyid/Documents/github/agentic-project-manager/app",
+    "basename": "/",
+    "buildDirectory": "/Users/sayyid/Documents/github/agentic-project-manager/build",
+    "future": {
+      "unstable_optimizeDeps": false,
+      "unstable_subResourceIntegrity": false,
+      "unstable_trailingSlashAwareDataRequests": false,
+      "v8_middleware": false,
+      "v8_splitRouteModules": false,
+      "v8_viteEnvironmentApi": false
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "root",
+        "file": "routes/home.tsx",
+        "index": true
+      },
+      "routes/login": {
+        "id": "routes/login",
+        "parentId": "root",
+        "file": "routes/login.tsx",
+        "path": "login"
+      },
+      "routes/api.auth.login": {
+        "id": "routes/api.auth.login",
+        "parentId": "root",
+        "file": "routes/api.auth.login.ts",
+        "path": "api/auth/login"
+      },
+      "routes/api.auth.logout": {
+        "id": "routes/api.auth.logout",
+        "parentId": "root",
+        "file": "routes/api.auth.logout.ts",
+        "path": "api/auth/logout"
+      },
+      "routes/api.projects": {
+        "id": "routes/api.projects",
+        "parentId": "root",
+        "file": "routes/api.projects.ts",
+        "path": "api/projects"
+      },
+      "routes/api.projects.upload": {
+        "id": "routes/api.projects.upload",
+        "parentId": "root",
+        "file": "routes/api.projects.upload.ts",
+        "path": "api/projects/upload"
+      },
+      "routes/api.projects.$fileName": {
+        "id": "routes/api.projects.$fileName",
+        "parentId": "root",
+        "file": "routes/api.projects.$fileName.ts",
+        "path": "api/projects/:fileName"
+      },
+      "routes/api.projects.$fileName.lock": {
+        "id": "routes/api.projects.$fileName.lock",
+        "parentId": "root",
+        "file": "routes/api.projects.$fileName.lock.ts",
+        "path": "api/projects/:fileName/lock"
+      },
+      "routes/api.projects.$fileName.rename": {
+        "id": "routes/api.projects.$fileName.rename",
+        "parentId": "root",
+        "file": "routes/api.projects.$fileName.rename.ts",
+        "path": "api/projects/:fileName/rename"
+      },
+      "routes/api.projects.$fileName.download": {
+        "id": "routes/api.projects.$fileName.download",
+        "parentId": "root",
+        "file": "routes/api.projects.$fileName.download.ts",
+        "path": "api/projects/:fileName/download"
+      },
+      "routes/api.ai": {
+        "id": "routes/api.ai",
+        "parentId": "root",
+        "file": "routes/api.ai.ts",
+        "path": "api/ai"
+      }
+    },
+    "routeDiscovery": {
+      "mode": "lazy",
+      "manifestPath": "/__manifest"
+    },
+    "serverBuildFile": "index.js",
+    "serverModuleFormat": "esm",
+    "ssr": true,
+    "allowedActionOrigins": false,
+    "unstable_routeConfig": [
+      {
+        "id": "root",
+        "path": "",
+        "file": "root.tsx",
+        "children": [
+          {
+            "file": "routes/home.tsx",
+            "index": true
+          },
+          {
+            "file": "routes/login.tsx",
+            "path": "login"
+          },
+          {
+            "file": "routes/api.auth.login.ts",
+            "path": "api/auth/login"
+          },
+          {
+            "file": "routes/api.auth.logout.ts",
+            "path": "api/auth/logout"
+          },
+          {
+            "file": "routes/api.projects.ts",
+            "path": "api/projects"
+          },
+          {
+            "file": "routes/api.projects.upload.ts",
+            "path": "api/projects/upload"
+          },
+          {
+            "file": "routes/api.projects.$fileName.ts",
+            "path": "api/projects/:fileName"
+          },
+          {
+            "file": "routes/api.projects.$fileName.lock.ts",
+            "path": "api/projects/:fileName/lock"
+          },
+          {
+            "file": "routes/api.projects.$fileName.rename.ts",
+            "path": "api/projects/:fileName/rename"
+          },
+          {
+            "file": "routes/api.projects.$fileName.download.ts",
+            "path": "api/projects/:fileName/download"
+          },
+          {
+            "file": "routes/api.ai.ts",
+            "path": "api/ai"
+          }
+        ]
+      }
+    ]
+  },
+  "viteConfig": {
+    "build": {
+      "assetsDir": "assets"
+    }
+  }
+}

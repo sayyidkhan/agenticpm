@@ -374,7 +374,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setIsSaving(true);
     try {
       const changes: Record<string, unknown> = {};
-      if (sheet === "source") changes.source = canonicalText;
+      // Always include source so the Source sheet stays in sync
+      changes.source = canonicalText;
       if (sheet === "people") changes.people = parsed.people;
       if (sheet === "tasks") changes.tasks = parsed.tasks;
       if (sheet === "timeline") {
@@ -383,9 +384,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       }
 
       await saveProjectSheets(activeFileName, changes as Parameters<typeof saveProjectSheets>[1]);
-      // Update snapshot for the saved sheet
+      // Update snapshot for the saved sheet (source is always saved)
       const saved = lastSavedRef.current;
-      if (sheet === "source") saved.canonicalText = canonicalText;
+      saved.canonicalText = canonicalText;
       if (sheet === "people") saved.people = JSON.parse(JSON.stringify(parsed.people));
       if (sheet === "tasks") saved.tasks = JSON.parse(JSON.stringify(parsed.tasks));
       if (sheet === "timeline") saved.timeline = JSON.parse(JSON.stringify(parsed.timeline));

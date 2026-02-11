@@ -1,7 +1,8 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { ProjectData, Person, Task, TimelineEntry, ProjectMeta } from "~/types/project";
 import { parseProjectText, serializeProject } from "~/lib/parser";
+import { getStorage } from "~/lib/storage";
+import { deleteSessionLock, transferSessionLock } from "~/lib/session-lock";
+export { acquireSessionLock, releaseSessionLock, refreshSessionLock } from "~/lib/session-lock";
 
 // Lazy load xlsx to avoid Vite SSR issues (used for READING only)
 let xlsxModule: any = null;
@@ -47,67 +48,8 @@ function addDataSheet(
   return ws;
 }
 
-const STORAGE_DIR = path.resolve(process.cwd(), "storage");
-
-// Ensure storage directory exists
-function ensureStorageDir() {
-  if (!fs.existsSync(STORAGE_DIR)) {
-    fs.mkdirSync(STORAGE_DIR, { recursive: true });
-  }
-}
-
-function getFilePath(fileName: string): string {
-  return path.join(STORAGE_DIR, fileName);
-}
-
 function sanitizeFileName(name: string): string {
   return name.replace(/[<>:"/\\|?*]/g, "_").trim();
-}
-
-// --- Session Lock ---
-
-interface SessionLock {
-  sessionId: string;
-  lockedAt: number;
-}
-
-const SESSION_LOCK_TIMEOUT = 60 * 1000; // 60 seconds - allows 30s refresh interval with buffer
-const sessionLocks = new Map<string, SessionLock>();
-
-export function acquireSessionLock(fileName: string, sessionId: string): { success: boolean; lockedBy?: string } {
-  const existing = sessionLocks.get(fileName);
-  if (existing) {
-    // Same session — allow
-    if (existing.sessionId === sessionId) {
-      existing.lockedAt = Date.now();
-      return { success: true };
-    }
-    // Stale lock — override
-    if (Date.now() - existing.lockedAt > SESSION_LOCK_TIMEOUT) {
-      sessionLocks.set(fileName, { sessionId, lockedAt: Date.now() });
-      return { success: true };
-    }
-    // Locked by another session
-    return { success: false, lockedBy: existing.sessionId };
-  }
-  sessionLocks.set(fileName, { sessionId, lockedAt: Date.now() });
-  return { success: true };
-}
-
-export function releaseSessionLock(fileName: string, sessionId: string): void {
-  const existing = sessionLocks.get(fileName);
-  if (existing && existing.sessionId === sessionId) {
-    sessionLocks.delete(fileName);
-  }
-}
-
-export function refreshSessionLock(fileName: string, sessionId: string): boolean {
-  const existing = sessionLocks.get(fileName);
-  if (existing && existing.sessionId === sessionId) {
-    existing.lockedAt = Date.now();
-    return true;
-  }
-  return false;
 }
 
 // --- TimelineUI Sheet Builder ---
@@ -470,52 +412,54 @@ function addStyledTimelineUISheet(workbook: any, data: ProjectData): void {
 // --- Project Listing ---
 
 export async function listProjects(): Promise<ProjectMeta[]> {
-  ensureStorageDir();
-  const files = fs.readdirSync(STORAGE_DIR).filter((f) => f.endsWith(".xlsx"));
+  const storage = getStorage();
+  const allFiles = await storage.list();
+  const files = allFiles.filter((f: string) => f.endsWith(".xlsx"));
   const xlsx = await getXLSX();
-  return files.map((fileName) => {
-    const filePath = getFilePath(fileName);
-    const stats = fs.statSync(filePath);
+  const results: ProjectMeta[] = [];
+  for (const fileName of files) {
     const name = fileName.replace(/\.xlsx$/, "");
-    // Try to read metadata sheet
     try {
-      const workbook = xlsx.readFile(filePath);
+      const buffer = await storage.read(fileName);
+      const workbook = xlsx.read(buffer, { type: "buffer" });
       const metaSheet = workbook.Sheets["Metadata"];
       if (metaSheet) {
         // @ts-expect-error - xlsx is dynamically loaded but properly typed at runtime
         const data = xlsx.utils.sheet_to_json<Record<string, string>>(metaSheet);
         const meta = data[0];
-        return {
+        results.push({
           name: meta?.Name || name,
           fileName,
-          createdAt: meta?.CreatedAt || stats.birthtime.toISOString(),
-          updatedAt: meta?.UpdatedAt || stats.mtime.toISOString(),
-        };
+          createdAt: meta?.CreatedAt || new Date().toISOString(),
+          updatedAt: meta?.UpdatedAt || new Date().toISOString(),
+        });
+        continue;
       }
     } catch {
       // fallback
     }
-    return {
+    results.push({
       name,
       fileName,
-      createdAt: stats.birthtime.toISOString(),
-      updatedAt: stats.mtime.toISOString(),
-    };
-  });
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  return results;
 }
 
 // --- Read Project ---
 
 export async function readProject(fileName: string): Promise<{ meta: ProjectMeta; data: ProjectData; canonicalText: string } | null> {
-  ensureStorageDir();
-  const filePath = getFilePath(fileName);
-  if (!fs.existsSync(filePath)) {
+  const storage = getStorage();
+  if (!(await storage.exists(fileName))) {
     return null;
   }
 
   try {
     const xlsx = await getXLSX();
-    const workbook = xlsx.readFile(filePath);
+    const buffer = await storage.read(fileName);
+    const workbook = xlsx.read(buffer, { type: "buffer" });
     const name = fileName.replace(/\.xlsx$/, "");
 
     // Read metadata
@@ -635,18 +579,18 @@ export async function writeProject(
   canonicalText: string,
   projectName?: string
 ): Promise<ProjectMeta> {
-  ensureStorageDir();
-  const filePath = getFilePath(fileName);
+  const storage = getStorage();
   const ExcelJS = await getExcelJS();
 
   const now = new Date().toISOString();
   let createdAt = now;
 
   // Preserve createdAt if file exists (read with SheetJS)
-  if (fs.existsSync(filePath)) {
+  if (await storage.exists(fileName)) {
     try {
       const xlsx = await getXLSX();
-      const existing = xlsx.readFile(filePath);
+      const existingBuffer = await storage.read(fileName);
+      const existing = xlsx.read(existingBuffer, { type: "buffer" });
       const metaSheet = existing.Sheets["Metadata"];
       if (metaSheet) {
         // @ts-expect-error - xlsx is dynamically loaded but properly typed at runtime
@@ -725,10 +669,11 @@ export async function writeProject(
   addStyledTimelineUISheet(workbook, data);
 
   // Ensure .xlsx extension
-  const xlsxPath = filePath.endsWith('.xlsx') ? filePath : filePath.replace(/\.\w+$/, '.xlsx');
-  await workbook.xlsx.writeFile(xlsxPath);
+  const actualFileName = fileName.endsWith('.xlsx') ? fileName : fileName.replace(/\.\w+$/, '.xlsx');
+  const buffer = await workbook.xlsx.writeBuffer();
+  await storage.write(actualFileName, Buffer.from(buffer));
 
-  return { name, fileName: xlsxPath.split('/').pop() || fileName, createdAt, updatedAt: now };
+  return { name, fileName: actualFileName, createdAt, updatedAt: now };
 }
 
 // --- Update specific sheets only ---
@@ -744,14 +689,14 @@ export async function updateProjectSheets(
     sprintConfig?: import("~/types/project").SprintConfig;
   }
 ): Promise<ProjectMeta | null> {
-  ensureStorageDir();
-  const filePath = getFilePath(fileName);
-  if (!fs.existsSync(filePath)) return null;
+  const storage = getStorage();
+  if (!(await storage.exists(fileName))) return null;
 
   try {
     // --- Read existing data with SheetJS ---
     const xlsx = await getXLSX();
-    const existing = xlsx.readFile(filePath);
+    const existingBuffer = await storage.read(fileName);
+    const existing = xlsx.read(existingBuffer, { type: "buffer" });
     const now = new Date().toISOString();
 
     // Read metadata
@@ -868,13 +813,13 @@ export async function updateProjectSheets(
 // --- Create New Project ---
 
 export async function createProject(name: string): Promise<ProjectMeta> {
-  ensureStorageDir();
+  const storage = getStorage();
   const safeName = sanitizeFileName(name);
   let fileName = `${safeName}.xlsx`;
 
   // Avoid name collision
   let counter = 1;
-  while (fs.existsSync(getFilePath(fileName))) {
+  while (await storage.exists(fileName)) {
     fileName = `${safeName} (${counter}).xlsx`;
     counter++;
   }
@@ -885,22 +830,20 @@ export async function createProject(name: string): Promise<ProjectMeta> {
 
 // --- Delete Project ---
 
-export function deleteProject(fileName: string): boolean {
-  const filePath = getFilePath(fileName);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    sessionLocks.delete(fileName);
-    return true;
+export async function deleteProject(fileName: string): Promise<boolean> {
+  const storage = getStorage();
+  const removed = await storage.remove(fileName);
+  if (removed) {
+    deleteSessionLock(fileName);
   }
-  return false;
+  return removed;
 }
 
 // --- Rename Project ---
 
 export async function renameProject(oldFileName: string, newName: string): Promise<ProjectMeta | null> {
-  ensureStorageDir();
-  const oldPath = getFilePath(oldFileName);
-  if (!fs.existsSync(oldPath)) return null;
+  const storage = getStorage();
+  if (!(await storage.exists(oldFileName))) return null;
 
   const safeName = sanitizeFileName(newName);
   let newFileName = `${safeName}.xlsx`;
@@ -908,21 +851,19 @@ export async function renameProject(oldFileName: string, newName: string): Promi
   // Avoid name collision (unless it's the same file)
   if (newFileName !== oldFileName) {
     let counter = 1;
-    while (fs.existsSync(getFilePath(newFileName))) {
+    while (await storage.exists(newFileName)) {
       newFileName = `${safeName} (${counter}).xlsx`;
       counter++;
     }
-    fs.renameSync(oldPath, getFilePath(newFileName));
+    await storage.rename(oldFileName, newFileName);
   }
 
   // Update metadata inside the file
   const result = await updateProjectSheets(newFileName, { projectName: newName });
 
   // Transfer session lock
-  const lock = sessionLocks.get(oldFileName);
-  if (lock && oldFileName !== newFileName) {
-    sessionLocks.delete(oldFileName);
-    sessionLocks.set(newFileName, lock);
+  if (oldFileName !== newFileName) {
+    transferSessionLock(oldFileName, newFileName);
   }
 
   return result;

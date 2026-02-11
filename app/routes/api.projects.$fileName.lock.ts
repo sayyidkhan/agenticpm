@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.projects.$fileName.lock";
-import { acquireSessionLock, releaseSessionLock, refreshSessionLock } from "~/lib/excel.server";
+import { acquireSessionLock, releaseSessionLock, refreshSessionLock } from "~/lib/session-lock";
 
 // POST /api/projects/:fileName/lock — acquire or refresh lock
 // DELETE /api/projects/:fileName/lock — release lock

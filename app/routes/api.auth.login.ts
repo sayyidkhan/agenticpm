@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.auth.login";
-import { validateCredentials, generateSessionToken } from "~/lib/auth.server";
+import { validateCredentials, generateSessionToken } from "~/lib/auth";
 
 // POST /api/auth/login
 export async function action({ request }: Route.ActionArgs) {

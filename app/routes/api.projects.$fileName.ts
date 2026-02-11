@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.projects.$fileName";
-import { readProject, writeProject, updateProjectSheets, deleteProject, renameProject } from "~/lib/excel.server";
+import { readProject, writeProject, updateProjectSheets, deleteProject, renameProject } from "~/lib/excel";
 import { parseProjectText } from "~/lib/parser";
 
 // GET /api/projects/:fileName — read project
@@ -20,7 +20,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // DELETE — delete project
   if (method === "DELETE") {
-    const success = deleteProject(fileName);
+    const success = await deleteProject(fileName);
     if (!success) {
       return data({ error: "Project not found" }, { status: 404 });
     }

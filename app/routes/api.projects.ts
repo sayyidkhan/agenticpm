@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.projects";
-import { listProjects, createProject } from "~/lib/excel.server";
+import { listProjects, createProject } from "~/lib/excel";
 
 // GET /api/projects — list all projects
 export async function loader() {

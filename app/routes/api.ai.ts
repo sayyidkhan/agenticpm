@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import type { Route } from "./+types/api.ai";
-import { createProjectFromPrompt, updateProjectFromPrompt } from "~/lib/openai.server";
+import { createProjectFromPrompt, updateProjectFromPrompt } from "~/lib/openai";
 
 // POST /api/ai — create or update project via AI
 export async function action({ request }: Route.ActionArgs) {

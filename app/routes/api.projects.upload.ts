@@ -1,36 +1,35 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { Route } from "./+types/api.projects.upload";
+import { getStorage } from "~/lib/storage";
 
-const STORAGE_DIR = path.resolve(process.cwd(), "storage");
-
-function ensureStorageDir() {
-  if (!fs.existsSync(STORAGE_DIR)) {
-    fs.mkdirSync(STORAGE_DIR, { recursive: true });
-  }
+function getExtension(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i >= 0 ? name.slice(i) : "";
 }
 
-function getUniqueFileName(baseName: string): string {
-  ensureStorageDir();
-  const ext = path.extname(baseName);
-  const nameWithoutExt = path.basename(baseName, ext);
-  
-  const filePath = path.join(STORAGE_DIR, baseName);
-  
+function getBaseName(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i >= 0 ? name.slice(0, i) : name;
+}
+
+async function getUniqueFileName(baseName: string): Promise<string> {
+  const storage = getStorage();
+  const ext = getExtension(baseName);
+  const nameWithoutExt = getBaseName(baseName);
+
   // If file doesn't exist, return original name
-  if (!fs.existsSync(filePath)) {
+  if (!(await storage.exists(baseName))) {
     return baseName;
   }
-  
+
   // File exists, find a unique name
   let counter = 2;
   let candidate = `${nameWithoutExt} (${counter})${ext}`;
-  
-  while (fs.existsSync(path.join(STORAGE_DIR, candidate))) {
+
+  while (await storage.exists(candidate)) {
     counter++;
     candidate = `${nameWithoutExt} (${counter})${ext}`;
   }
-  
+
   return candidate;
 }
 
@@ -194,10 +193,10 @@ export async function action({ request }: Route.ActionArgs) {
     const saveFile = formData.get("save") === "true";
 
     if (saveFile && validation.valid) {
-      ensureStorageDir();
-      
+      const storage = getStorage();
+
       // Get unique filename
-      const uniqueFileName = getUniqueFileName(fileName);
+      const uniqueFileName = await getUniqueFileName(fileName);
       
       // If filename was changed, also update the project name in metadata
       if (uniqueFileName !== fileName) {
@@ -220,13 +219,13 @@ export async function action({ request }: Route.ActionArgs) {
         let uniqueProjectName = `${baseProjectName} (${counter})`;
         
         // Check existing project names
-        const existingFiles = fs.readdirSync(STORAGE_DIR).filter((f: string) => f.endsWith(".xlsx"));
+        const existingFiles = (await storage.list()).filter((f: string) => f.endsWith(".xlsx"));
         const existingNames = new Set<string>();
         
         for (const existingFile of existingFiles) {
           try {
-            const existingPath = path.join(STORAGE_DIR, existingFile);
-            const existingWorkbook = xlsx.readFile(existingPath);
+            const existingBuffer = await storage.read(existingFile);
+            const existingWorkbook = xlsx.read(existingBuffer, { type: "buffer" });
             const existingMeta = existingWorkbook.Sheets["Metadata"];
             if (existingMeta) {
               const existingMetaRows = xlsx.utils.sheet_to_json<Record<string, string>>(existingMeta);
@@ -253,12 +252,10 @@ export async function action({ request }: Route.ActionArgs) {
         
         // Write the updated workbook
         const updatedBuffer = xlsx.write(updatedWorkbook, { type: "buffer", bookType: "xlsx" });
-        const filePath = path.join(STORAGE_DIR, uniqueFileName);
-        fs.writeFileSync(filePath, updatedBuffer);
+        await storage.write(uniqueFileName, Buffer.from(updatedBuffer));
       } else {
         // No filename conflict, save as-is
-        const filePath = path.join(STORAGE_DIR, uniqueFileName);
-        fs.writeFileSync(filePath, buffer);
+        await storage.write(uniqueFileName, buffer);
       }
       
       validation.fileName = uniqueFileName;
