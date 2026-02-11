@@ -87,11 +87,11 @@ export async function renameProjectFile(
 
 // --- Session Lock ---
 
-export async function acquireLock(fileName: string, sessionId: string): Promise<{ success: boolean; lockedBy?: string }> {
+export async function acquireLock(fileName: string, sessionId: string, username?: string): Promise<{ success: boolean; lockedBy?: string; lockedByUser?: string }> {
   const res = await fetch(`/api/projects/${encodeURIComponent(fileName)}/lock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({ sessionId, username }),
   });
   return res.json();
 }

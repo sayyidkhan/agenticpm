@@ -10,7 +10,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   if (method === "POST") {
     const body = await request.json();
-    const { sessionId, _method } = body as { sessionId: string; _method?: string };
+    const { sessionId, _method, username } = body as { sessionId: string; _method?: string; username?: string };
     if (!sessionId) {
       return data({ error: "sessionId is required" }, { status: 400 });
     }
@@ -19,7 +19,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       releaseSessionLock(fileName, sessionId);
       return data({ success: true });
     }
-    const result = acquireSessionLock(fileName, sessionId);
+    const result = acquireSessionLock(fileName, sessionId, username);
     return data(result);
   }
 

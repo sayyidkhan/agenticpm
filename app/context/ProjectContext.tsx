@@ -25,6 +25,7 @@ interface ProjectContextType {
   canUndo: boolean;
   isLocked: boolean;
   isReadOnly: boolean;
+  lockedByUser: string | null;
 
   // Active project
   activeFileName: string | null;
@@ -73,6 +74,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [lockedByUser, setLockedByUser] = useState<string | null>(null);
+
+  // Idle detection: track last user interaction time
+  const lastActivityRef = useRef(Date.now());
+  const isIdleRef = useRef(false);
+  const IDLE_TIMEOUT = 60 * 1000; // 1 minute
 
   // Undo history (stored in localStorage, cleared on mount)
   const [undoHistory, setUndoHistory] = useState<Array<{ text: string; parsed: ProjectData }>>(() => {
@@ -131,17 +138,54 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Refresh lock periodically to keep it active
+  // Track user activity for idle detection
+  useEffect(() => {
+    const events = ["mousedown", "keydown", "scroll", "touchstart", "mousemove"];
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now();
+      // If we were idle and now active again, re-acquire lock
+      if (isIdleRef.current && activeFileName && !isReadOnly) {
+        isIdleRef.current = false;
+        const username = typeof window !== "undefined" ? localStorage.getItem("auth_username") || undefined : undefined;
+        acquireLock(activeFileName, sessionId, username).then(result => {
+          if (!result.success) {
+            // Someone else took the lock while we were idle
+            setIsReadOnly(true);
+            setIsLocked(true);
+            setLockedByUser(result.lockedByUser || null);
+          }
+        }).catch(() => {});
+      }
+    };
+    events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
+    return () => events.forEach(e => window.removeEventListener(e, handleActivity));
+  }, [activeFileName, sessionId, isReadOnly]);
+
+  // Refresh lock periodically to keep it active (skip if idle)
   useEffect(() => {
     if (!activeFileName || isReadOnly) return;
 
+    const username = typeof window !== "undefined" ? localStorage.getItem("auth_username") || undefined : undefined;
+
     // Refresh lock every 3 seconds (lock expires after 5s of inactivity)
     const refreshInterval = setInterval(async () => {
+      // Check if user is idle (no activity for 1 minute)
+      if (Date.now() - lastActivityRef.current > IDLE_TIMEOUT) {
+        if (!isIdleRef.current) {
+          isIdleRef.current = true;
+          // Release lock since user is idle
+          try {
+            await releaseLock(activeFileName, sessionId);
+          } catch {}
+        }
+        return; // Don't refresh lock while idle
+      }
+
       try {
         await fetch(`/api/projects/${encodeURIComponent(activeFileName)}/lock`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({ sessionId, username }),
         });
       } catch {
         // Ignore refresh errors
@@ -149,7 +193,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }, 3 * 1000);
 
     return () => clearInterval(refreshInterval);
-  }, [activeFileName, sessionId]);
+  }, [activeFileName, sessionId, isReadOnly]);
 
   // Release lock on unload
   useEffect(() => {
@@ -224,8 +268,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setIsLocked(false);
     setIsReadOnly(false);
     try {
-      // Acquire lock
-      const lockResult = await acquireLock(fileName, sessionId);
+      // Acquire lock (pass username so other users can see who's editing)
+      const username = typeof window !== "undefined" ? localStorage.getItem("auth_username") || undefined : undefined;
+      const lockResult = await acquireLock(fileName, sessionId, username);
       const readOnly = !lockResult.success;
 
       const result = await fetchProject(fileName);
@@ -245,6 +290,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       if (readOnly) {
         setIsReadOnly(true);
         setIsLocked(true);
+        setLockedByUser(lockResult.lockedByUser || null);
+      } else {
+        setLockedByUser(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load project");
@@ -490,6 +538,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         projects,
         isLocked,
         isReadOnly,
+        lockedByUser,
         refreshProjects,
         setCanonicalText,
         setInfo,
