@@ -51,6 +51,7 @@ export async function saveProjectSheets(
     people?: Person[];
     tasks?: Task[];
     timeline?: TimelineEntry[];
+    info?: string;
     projectName?: string;
   }
 ): Promise<ProjectMeta> {

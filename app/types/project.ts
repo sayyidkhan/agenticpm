@@ -33,6 +33,7 @@ export interface ProjectData {
   people: Person[];
   timeline: TimelineEntry[];
   tasks: Task[];
+  info?: string; // Project info markdown
   sprintConfig?: SprintConfig;
   currentSprint?: string; // Currently active sprint/phase
 }
@@ -57,6 +58,7 @@ export interface SheetChanges {
   people?: boolean;
   tasks?: boolean;
   timeline?: boolean;
+  info?: boolean;
 }
 
 export const EMPTY_PROJECT: ProjectData = {

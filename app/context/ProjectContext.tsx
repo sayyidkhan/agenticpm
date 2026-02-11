@@ -35,6 +35,7 @@ interface ProjectContextType {
 
   // Actions
   setCanonicalText: (text: string) => void;
+  setInfo: (info: string) => void;
   setCurrentSprint: (sprint: string | null) => Promise<void>;
   loadProject: (fileName: string) => Promise<void>;
   createNewProject: () => void;
@@ -44,7 +45,7 @@ interface ProjectContextType {
 
   // Save
   saveAll: () => Promise<void>;
-  saveSheet: (sheet: "source" | "people" | "tasks" | "timeline") => Promise<void>;
+  saveSheet: (sheet: "source" | "people" | "tasks" | "timeline" | "info") => Promise<void>;
 
   // AI
   createFromPrompt: (prompt: string) => Promise<void>;
@@ -86,7 +87,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     people: Person[];
     tasks: Task[];
     timeline: TimelineEntry[];
-  }>({ canonicalText: "", people: [], tasks: [], timeline: [] });
+    info: string;
+  }>({ canonicalText: "", people: [], tasks: [], timeline: [], info: "" });
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -172,7 +174,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       canonicalText !== saved.canonicalText ||
       JSON.stringify(parsed.people) !== JSON.stringify(saved.people) ||
       JSON.stringify(parsed.tasks) !== JSON.stringify(saved.tasks) ||
-      JSON.stringify(parsed.timeline) !== JSON.stringify(saved.timeline);
+      JSON.stringify(parsed.timeline) !== JSON.stringify(saved.timeline) ||
+      (parsed.info || "") !== saved.info;
     setHasUnsavedChanges(changed);
   }, [canonicalText, parsed, activeFileName]);
 
@@ -207,6 +210,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       people: JSON.parse(JSON.stringify(data.people)),
       tasks: JSON.parse(JSON.stringify(data.tasks)),
       timeline: JSON.parse(JSON.stringify(data.timeline)),
+      info: data.info || "",
     };
     setHasUnsavedChanges(false);
   }, []);
@@ -369,7 +373,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFileName, parsed, canonicalText, activeProjectName]);
 
-  const saveSheet = useCallback(async (sheet: "source" | "people" | "tasks" | "timeline") => {
+  const setInfo = useCallback((info: string) => {
+    if (!parsed) return;
+    const updated = { ...parsed, info };
+    setParsed(updated);
+  }, [parsed]);
+
+  const saveSheet = useCallback(async (sheet: "source" | "people" | "tasks" | "timeline" | "info") => {
     if (!activeFileName || !parsed) return;
     setIsSaving(true);
     try {
@@ -382,6 +392,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         changes.timeline = parsed.timeline;
         changes.sprintConfig = parsed.sprintConfig;
       }
+      if (sheet === "info") changes.info = parsed.info || "";
 
       await saveProjectSheets(activeFileName, changes as Parameters<typeof saveProjectSheets>[1]);
       // Update snapshot for the saved sheet (source is always saved)
@@ -390,6 +401,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       if (sheet === "people") saved.people = JSON.parse(JSON.stringify(parsed.people));
       if (sheet === "tasks") saved.tasks = JSON.parse(JSON.stringify(parsed.tasks));
       if (sheet === "timeline") saved.timeline = JSON.parse(JSON.stringify(parsed.timeline));
+      if (sheet === "info") saved.info = parsed.info || "";
       checkUnsavedChanges();
       await refreshProjects();
     } catch (err) {
@@ -476,6 +488,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         isLocked,
         refreshProjects,
         setCanonicalText,
+        setInfo,
         setCurrentSprint,
         loadProject,
         createNewProject,

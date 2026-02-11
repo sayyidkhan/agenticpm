@@ -10,6 +10,7 @@ import { PeopleView } from "~/components/views/PeopleView";
 import { TaskListView } from "~/components/views/TaskListView";
 import { TimelineView } from "~/components/views/TimelineView";
 import { MatrixView } from "~/components/views/MatrixView";
+import { InfoView } from "~/components/views/InfoView";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { Button } from "~/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   ListTodo,
   Calendar,
   Grid3X3,
+  Info,
   Loader2,
   Circle,
   LogOut,
@@ -243,6 +245,10 @@ function AppLayout() {
                       <Grid3X3 className="h-3.5 w-3.5" />
                       Matrix
                     </TabsTrigger>
+                    <TabsTrigger value="info" className="gap-1.5">
+                      <Info className="h-3.5 w-3.5" />
+                      Info
+                    </TabsTrigger>
                   </TabsList>
                 </div>
               </div>
@@ -268,6 +274,9 @@ function AppLayout() {
               </TabsContent>
               <TabsContent value="matrix" className="flex-1 overflow-hidden">
                 <MatrixView />
+              </TabsContent>
+              <TabsContent value="info" className="flex-1 overflow-hidden">
+                <InfoView />
               </TabsContent>
             </Tabs>
           )}

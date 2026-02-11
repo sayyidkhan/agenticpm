@@ -547,6 +547,14 @@ export async function readProject(fileName: string): Promise<{ meta: ProjectMeta
       }
     }
 
+    // Info sheet (markdown stored line-by-line like Source)
+    const infoSheet = workbook.Sheets["Info"];
+    if (infoSheet) {
+      // @ts-expect-error - xlsx is dynamically loaded but properly typed at runtime
+      const infoRows = xlsx.utils.sheet_to_json<Record<string, string>>(infoSheet, { header: 1 });
+      data.info = infoRows.map((row: unknown) => (row as string[])[0] || "").join("\n");
+    }
+
     // If no canonical text but we have structured data, serialize it
     if (!canonicalText.trim() && (data.people.length || data.tasks.length || data.timeline.length)) {
       canonicalText = serializeProject(data);
@@ -662,6 +670,16 @@ export async function writeProject(
     );
   }
 
+  // Info sheet (markdown stored line-by-line like Source)
+  if (data.info !== undefined) {
+    const infoWs = workbook.addWorksheet("Info");
+    const infoLines = (data.info || "").split("\n");
+    for (const line of infoLines) {
+      infoWs.addRow([line]);
+    }
+    infoWs.getColumn(1).width = 120;
+  }
+
   // GanttChart sheet (cell-based Gantt visualization)
   addGanttChartSheet(workbook, data);
 
@@ -685,6 +703,7 @@ export async function updateProjectSheets(
     people?: Person[];
     tasks?: Task[];
     timeline?: TimelineEntry[];
+    info?: string;
     projectName?: string;
     sprintConfig?: import("~/types/project").SprintConfig;
   }
@@ -784,12 +803,22 @@ export async function updateProjectSheets(
       }
     }
 
+    // Read existing info
+    let info: string | undefined;
+    const existingInfoSheet = existing.Sheets["Info"];
+    if (existingInfoSheet) {
+      // @ts-expect-error - xlsx is dynamically loaded but properly typed at runtime
+      const infoRows = xlsx.utils.sheet_to_json<Record<string, string>>(existingInfoSheet, { header: 1 });
+      info = infoRows.map((row: unknown) => (row as string[])[0] || "").join("\n");
+    }
+
     // --- Apply changes ---
     if (changes.source !== undefined) canonicalText = changes.source;
     if (changes.people !== undefined) people = changes.people;
     if (changes.tasks !== undefined) tasks = changes.tasks;
     if (changes.timeline !== undefined) timeline = changes.timeline;
     if (changes.sprintConfig !== undefined) sprintConfig = changes.sprintConfig;
+    if (changes.info !== undefined) info = changes.info;
 
     // --- Write fresh file with exceljs ---
     const data: ProjectData = {
@@ -797,6 +826,7 @@ export async function updateProjectSheets(
       people,
       tasks,
       timeline,
+      info,
       sprintConfig,
     };
 
