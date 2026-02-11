@@ -1,10 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useProject } from "~/context/ProjectContext";
 import { Send, Loader2, AlertCircle } from "lucide-react";
 import { validatePrompt, detectAmbiguity } from "~/lib/prompt-validation";
 import { AmbiguityDialog } from "~/components/AmbiguityDialog";
 
-export function PromptPanel() {
+export interface PromptPanelHandle {
+  setPrompt: (text: string) => void;
+}
+
+export const PromptPanel = forwardRef<PromptPanelHandle>(function PromptPanel(_, ref) {
   const { createFromPrompt, updateFromPrompt, isLoading, activeFileName, parsed } = useProject();
   const [prompt, setPrompt] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -84,6 +88,16 @@ export function PromptPanel() {
     setValidationError(null); // Clear error on input
   };
 
+  // Expose setPrompt to parent components
+  useImperativeHandle(ref, () => ({
+    setPrompt: (text: string) => {
+      setPrompt(text);
+      setValidationError(null);
+      // Focus textarea
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    },
+  }), []);
+
   const currentSprint = parsed?.currentSprint;
 
   return (
@@ -145,4 +159,4 @@ export function PromptPanel() {
       />
     </>
   );
-}
+});

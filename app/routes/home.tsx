@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { ProjectProvider, useProject } from "~/context/ProjectContext";
 import { ProjectHistory } from "~/components/ProjectHistory";
 import { EmptyState } from "~/components/EmptyState";
-import { PromptPanel } from "~/components/PromptPanel";
+import { PromptPanel, type PromptPanelHandle } from "~/components/PromptPanel";
 import { TextEditorView } from "~/components/views/TextEditorView";
 import { PeopleView } from "~/components/views/PeopleView";
 import { TaskListView } from "~/components/views/TaskListView";
@@ -79,6 +79,7 @@ export default function Home() {
 function AppLayout() {
   const navigate = useNavigate();
   const { parsed, error, isSaving, hasUnsavedChanges, canUndo, undo, saveAll, activeFileName, activeProjectName, setCurrentSprint, isLocked } = useProject();
+  const promptPanelRef = useRef<PromptPanelHandle>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("dark_mode") === "true";
@@ -97,6 +98,10 @@ function AppLayout() {
     }
     return true;
   });
+
+  const handlePromptSelect = (prompt: string) => {
+    promptPanelRef.current?.setPrompt(prompt);
+  };
 
   const handleLogout = async () => {
     try {
@@ -219,7 +224,7 @@ function AppLayout() {
         {/* Main content */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {!hasProject ? (
-            <EmptyState />
+            <EmptyState onPromptSelect={handlePromptSelect} />
           ) : (
             <Tabs defaultValue="source" className="flex flex-1 flex-col min-h-0">
               <div className={`border-b transition-all duration-300 ease-in-out overflow-hidden ${tabsOpen ? "h-auto" : "h-0"}`}>
@@ -289,7 +294,7 @@ function AppLayout() {
           )}
 
           {/* Prompt panel */}
-          <PromptPanel />
+          <PromptPanel ref={promptPanelRef} />
         </div>
       </div>
 
