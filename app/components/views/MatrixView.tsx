@@ -153,9 +153,11 @@ export function MatrixView() {
                           <span className="truncate">{task.title}</span>
                         </div>
                       </td>
-                      {people.map((p) => (
+                      {people.map((p) => {
+                        const assignees = task.assignee ? task.assignee.split(',').map(a => a.trim()) : [];
+                        return (
                         <td key={p.name} className="text-center p-3">
-                          {task.assignee === p.name ? (
+                          {assignees.includes(p.name) ? (
                             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
                               ✓
                             </span>
@@ -163,7 +165,8 @@ export function MatrixView() {
                             <span className="text-muted-foreground/30">—</span>
                           )}
                         </td>
-                      ))}
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -213,9 +216,11 @@ export function MatrixView() {
                           <span className="truncate">{task.title}</span>
                         </div>
                       </td>
-                      {people.map((p) => (
+                      {people.map((p) => {
+                        const assignees = task.assignee ? task.assignee.split(',').map(a => a.trim()) : [];
+                        return (
                         <td key={p.name} className="text-center p-3">
-                          {task.assignee === p.name ? (
+                          {assignees.includes(p.name) ? (
                             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
                               ✓
                             </span>
@@ -223,7 +228,8 @@ export function MatrixView() {
                             <span className="text-muted-foreground/30">—</span>
                           )}
                         </td>
-                      ))}
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>

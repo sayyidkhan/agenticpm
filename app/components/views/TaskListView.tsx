@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useProject } from "~/context/ProjectContext";
 import { serializeProject } from "~/lib/parser";
 import { Button } from "~/components/ui/button";
@@ -12,6 +12,72 @@ const STATUS_ICON: Record<Task["status"], React.ReactNode> = {
   "in-progress": <Clock className="h-4 w-4 text-yellow-500" />,
   done: <CheckCircle2 className="h-4 w-4 text-green-500" />,
 };
+
+function MultiAssigneeSelect({ value, people, onChange }: { value: string | null; people: { name: string }[]; onChange: (assignee: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = useMemo(() => value ? value.split(',').map(a => a.trim()).filter(Boolean) : [], [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggle = (name: string) => {
+    let next: string[];
+    if (selected.includes(name)) {
+      next = selected.filter(n => n !== name);
+    } else {
+      next = [...selected, name];
+    }
+    onChange(next.length > 0 ? next.join(', ') : null);
+  };
+
+  const label = selected.length === 0 ? 'Unassigned' : selected.length === 1 ? selected[0] : `${selected.length} people`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="text-xs px-2 py-1 rounded-md border bg-background cursor-pointer hover:bg-muted transition-colors w-28 text-left truncate"
+        title={selected.length > 0 ? selected.join(', ') : 'Assign task to team members'}
+      >
+        {label}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-background border rounded-md shadow-lg py-1 min-w-[160px]">
+          {people.map((p) => (
+            <label
+              key={p.name}
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted cursor-pointer text-xs"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(p.name)}
+                onChange={() => toggle(p.name)}
+                className="rounded border-muted-foreground/30"
+              />
+              {p.name}
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { onChange(null); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted border-t mt-1"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function RemarksInput({ value, onChange, onSave }: { value: string; onChange: (text: string) => void; onSave: () => void }) {
   const [localValue, setLocalValue] = useState(value);
@@ -359,18 +425,12 @@ export function TaskListView() {
                         ))}
                       </select>
                       
-                      {/* Assignee Dropdown */}
-                      <select
-                        value={task.assignee || ""}
-                        onChange={(e) => updateTaskAssignee(originalIndex, e.target.value || null)}
-                        className="text-xs px-2 py-1 rounded-md border bg-background cursor-pointer hover:bg-muted transition-colors w-28"
-                        title="Assign task to team member"
-                      >
-                        <option value="">Unassigned</option>
-                        {parsed.people.map((p) => (
-                          <option key={p.name} value={p.name}>{p.name}</option>
-                        ))}
-                      </select>
+                      {/* Assignee Multi-Select */}
+                      <MultiAssigneeSelect
+                        value={task.assignee}
+                        people={parsed.people}
+                        onChange={(assignee) => updateTaskAssignee(originalIndex, assignee)}
+                      />
                       
                       {/* Delete Button */}
                       <button
@@ -483,17 +543,11 @@ export function TaskListView() {
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
-                      <select
-                        value={task.assignee || ""}
-                        onChange={(e) => updateTaskAssignee(originalIndex, e.target.value || null)}
-                        className="text-xs px-2 py-1 rounded-md border bg-background cursor-pointer hover:bg-muted transition-colors w-28"
-                        title="Assign task to team member"
-                      >
-                        <option value="">Unassigned</option>
-                        {parsed.people.map((p) => (
-                          <option key={p.name} value={p.name}>{p.name}</option>
-                        ))}
-                      </select>
+                      <MultiAssigneeSelect
+                        value={task.assignee}
+                        people={parsed.people}
+                        onChange={(assignee) => updateTaskAssignee(originalIndex, assignee)}
+                      />
                       
                       {/* Delete Button */}
                       <button
@@ -539,17 +593,35 @@ export function TaskListView() {
 
               {/* Assignee */}
               <div>
-                <label className="text-sm font-medium block mb-1">Assignee</label>
-                <select
-                  value={newTaskForm.assignee}
-                  onChange={(e) => setNewTaskForm({ ...newTaskForm, assignee: e.target.value })}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Unassigned</option>
-                  {parsed.people.map((p) => (
-                    <option key={p.name} value={p.name}>{p.name}</option>
-                  ))}
-                </select>
+                <label className="text-sm font-medium block mb-1">Assignee(s)</label>
+                <div className="flex flex-wrap gap-2 p-2 rounded border bg-background min-h-[40px]">
+                  {parsed.people.map((p) => {
+                    const selected = newTaskForm.assignee ? newTaskForm.assignee.split(',').map(a => a.trim()).filter(Boolean) : [];
+                    const isChecked = selected.includes(p.name);
+                    return (
+                      <label key={p.name} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            let next: string[];
+                            if (isChecked) {
+                              next = selected.filter(n => n !== p.name);
+                            } else {
+                              next = [...selected, p.name];
+                            }
+                            setNewTaskForm({ ...newTaskForm, assignee: next.join(', ') });
+                          }}
+                          className="rounded border-muted-foreground/30"
+                        />
+                        {p.name}
+                      </label>
+                    );
+                  })}
+                  {parsed.people.length === 0 && (
+                    <span className="text-sm text-muted-foreground">No people defined</span>
+                  )}
+                </div>
               </div>
 
               {/* Sprint */}
