@@ -145,6 +145,7 @@ const blobProvider: StorageProvider = {
     await put(BLOB_PREFIX + fileName, data, {
       access: "public",
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
   },
 
