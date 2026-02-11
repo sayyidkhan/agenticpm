@@ -78,7 +78,7 @@ export default function Home() {
 
 function AppLayout() {
   const navigate = useNavigate();
-  const { parsed, error, isSaving, hasUnsavedChanges, canUndo, undo, saveAll, activeFileName, activeProjectName, setCurrentSprint, isLocked } = useProject();
+  const { parsed, error, isSaving, hasUnsavedChanges, canUndo, undo, saveAll, activeFileName, activeProjectName, setCurrentSprint, isLocked, sessionId } = useProject();
   const promptPanelRef = useRef<PromptPanelHandle>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -104,6 +104,18 @@ function AppLayout() {
   };
 
   const handleLogout = async () => {
+    // Release project lock before logging out
+    if (activeFileName) {
+      try {
+        await fetch(`/api/projects/${encodeURIComponent(activeFileName)}/lock`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+      } catch {
+        // Ignore lock release errors
+      }
+    }
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (err) {

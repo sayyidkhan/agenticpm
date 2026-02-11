@@ -5,7 +5,7 @@ interface SessionLock {
   lockedAt: number;
 }
 
-const SESSION_LOCK_TIMEOUT = 60 * 1000; // 60 seconds - allows 30s refresh interval with buffer
+const SESSION_LOCK_TIMEOUT = 5 * 1000; // 5 seconds - short timeout so locks expire quickly after logout
 const sessionLocks = new Map<string, SessionLock>();
 
 export function acquireSessionLock(fileName: string, sessionId: string): { success: boolean; lockedBy?: string } {

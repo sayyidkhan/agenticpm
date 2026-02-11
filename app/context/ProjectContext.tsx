@@ -133,7 +133,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!activeFileName) return;
 
-    // Refresh lock every 30 seconds
+    // Refresh lock every 3 seconds (lock expires after 5s of inactivity)
     const refreshInterval = setInterval(async () => {
       try {
         await fetch(`/api/projects/${encodeURIComponent(activeFileName)}/lock`, {
@@ -144,7 +144,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       } catch {
         // Ignore refresh errors
       }
-    }, 30 * 1000);
+    }, 3 * 1000);
 
     return () => clearInterval(refreshInterval);
   }, [activeFileName, sessionId]);

@@ -10,9 +10,14 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   if (method === "POST") {
     const body = await request.json();
-    const { sessionId } = body as { sessionId: string };
+    const { sessionId, _method } = body as { sessionId: string; _method?: string };
     if (!sessionId) {
       return data({ error: "sessionId is required" }, { status: 400 });
+    }
+    // sendBeacon can only POST, so support _method: "DELETE" override
+    if (_method === "DELETE") {
+      releaseSessionLock(fileName, sessionId);
+      return data({ success: true });
     }
     const result = acquireSessionLock(fileName, sessionId);
     return data(result);
