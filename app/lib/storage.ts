@@ -172,7 +172,11 @@ const blobProvider: StorageProvider = {
 // ---------------------------------------------------------------------------
 
 function getBackend(): "blob" | "local" {
-  return process.env.STORAGE_BACKEND === "blob" ? "blob" : "local";
+  if (process.env.STORAGE_BACKEND) {
+    return process.env.STORAGE_BACKEND === "blob" ? "blob" : "local";
+  }
+  // Auto-detect: use blob on Vercel, local otherwise
+  return process.env.VERCEL ? "blob" : "local";
 }
 
 export function getStorage(): StorageProvider {
