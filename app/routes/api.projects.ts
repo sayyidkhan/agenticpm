@@ -4,8 +4,13 @@ import { listProjects, createProject } from "~/lib/excel";
 
 // GET /api/projects — list all projects
 export async function loader() {
-  const projects = await listProjects();
-  return data({ projects });
+  try {
+    const projects = await listProjects();
+    return data({ projects });
+  } catch (err: any) {
+    console.error("listProjects error:", err);
+    return data({ error: err.message || "Failed to list projects", projects: [] }, { status: 500 });
+  }
 }
 
 // POST /api/projects — create new project
