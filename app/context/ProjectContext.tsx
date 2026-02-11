@@ -275,7 +275,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
       const result = await fetchProject(fileName);
       if (!result) {
-        setError("Failed to load project");
+        // Project doesn't exist (e.g. deleted or not on this server) — clear stale reference
+        localStorage.removeItem("pm_active_file");
+        setActiveFileName(null);
+        setActiveProjectName(null);
         setIsLoading(false);
         return;
       }
