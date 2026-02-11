@@ -125,8 +125,10 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
   const ACTUAL_BAR = "FF2563EB";
   const GREEN = "FF16A34A";
   const GREEN_BAR = "FF22C55E";
+  const GREEN_BAR_LIGHT = "FF86EFAC";
   const RED = "FFDC2626";
   const RED_BAR = "FFEF4444";
+  const RED_BAR_LIGHT = "FFFCA5A5";
   const BORDER_COLOR = "FFE2E8F0";
   const TEXT_MUTED = "FF64748B";
 
@@ -171,12 +173,12 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
   legendRow.getCell(leg1Col + 1).value = "Planned";
   legendRow.getCell(leg1Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
   const leg2Col = leg1Col + 5;
-  legendRow.getCell(leg2Col).fill = solidFill(ACTUAL_BAR);
-  legendRow.getCell(leg2Col + 1).value = "Actual";
+  legendRow.getCell(leg2Col).fill = solidFill(GREEN_BAR_LIGHT);
+  legendRow.getCell(leg2Col + 1).value = "Remaining";
   legendRow.getCell(leg2Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
   const leg3Col = leg2Col + 5;
   legendRow.getCell(leg3Col).fill = solidFill(GREEN_BAR);
-  legendRow.getCell(leg3Col + 1).value = "On track";
+  legendRow.getCell(leg3Col + 1).value = "Done";
   legendRow.getCell(leg3Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
   const leg4Col = leg3Col + 5;
   legendRow.getCell(leg4Col).fill = solidFill(RED_BAR);
@@ -238,20 +240,29 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
       }
     }
 
-    // Actual bar (bottom row)
+    // Actual bar (bottom row) — lighter color for full range, darker for done portion
     if (entry.actualStartDate && entry.actualEndDate) {
-      let barColor = ACTUAL_BAR;
+      let barColorDone = ACTUAL_BAR;
+      let barColorRemaining = PRIMARY_BAR;
       if (entry.endDate) {
         const variance = Math.round(
           (new Date(entry.actualEndDate).getTime() - new Date(entry.endDate).getTime()) / (1000 * 60 * 60 * 24)
         );
-        if (variance > 0) barColor = RED_BAR;
-        else if (variance <= 0) barColor = GREEN_BAR;
+        if (variance > 0) { barColorDone = RED_BAR; barColorRemaining = RED_BAR_LIGHT; }
+        else if (variance <= 0) { barColorDone = GREEN_BAR; barColorRemaining = GREEN_BAR_LIGHT; }
       }
       const startCol = dateToCol(entry.actualStartDate);
       const endCol = dateToCol(entry.actualEndDate);
+      const barLen = endCol - startCol + 1;
+      const progress = entry.percentage ?? 0;
+      const doneCols = Math.round(barLen * (progress / 100));
+      // Fill full bar with lighter color first
       for (let c = startCol; c <= endCol; c++) {
-        actualRow.getCell(c).fill = solidFill(barColor);
+        actualRow.getCell(c).fill = solidFill(barColorRemaining);
+      }
+      // Overlay done portion with darker color
+      for (let c = startCol; c < startCol + doneCols; c++) {
+        actualRow.getCell(c).fill = solidFill(barColorDone);
       }
     } else if (entry.startDate && entry.endDate && (entry.percentage ?? 0) > 0) {
       const startCol = dateToCol(entry.startDate);

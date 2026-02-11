@@ -206,12 +206,12 @@ export function TimelineView() {
                 <span className="text-muted-foreground">Planned</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-primary"></div>
-                <span className="text-muted-foreground">Actual Progress</span>
+                <div className="w-3 h-3 rounded bg-green-300/60"></div>
+                <span className="text-muted-foreground">Remaining</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded bg-green-500"></div>
-                <span className="text-muted-foreground">On track / Ahead</span>
+                <span className="text-muted-foreground">Done</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded bg-red-500"></div>
@@ -282,16 +282,20 @@ export function TimelineView() {
                             <div
                               className={`absolute top-0.5 h-3 rounded ${
                                 endVariance !== null && endVariance > 0 
-                                  ? 'bg-red-500/80' 
-                                  : 'bg-green-500/80'
+                                  ? 'bg-red-300/60' 
+                                  : 'bg-green-300/60'
                               }`}
                               style={{ left: `${actual.left}%`, width: `${actual.width}%` }}
                               title={`Actual: ${entry.actualStartDate} → ${entry.actualEndDate}`}
                             >
-                              {progress > 0 && progress < 100 && (
+                              {progress > 0 && (
                                 <div
-                                  className="h-full rounded-l bg-white/30"
-                                  style={{ width: `${progress}%` }}
+                                  className={`h-full ${progress < 100 ? 'rounded-l' : 'rounded'} ${
+                                    endVariance !== null && endVariance > 0
+                                      ? 'bg-red-500/80'
+                                      : 'bg-green-500/80'
+                                  }`}
+                                  style={{ width: `${Math.min(progress, 100)}%` }}
                                 />
                               )}
                             </div>
