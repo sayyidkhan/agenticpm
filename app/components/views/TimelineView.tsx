@@ -249,7 +249,7 @@ export function TimelineView() {
                       </div>
                       
                       {/* Chart area */}
-                      <div className="flex-1 relative h-10">
+                      <div className="flex-1 relative h-8">
                         {/* Grid lines */}
                         {weekMarkers.map((marker, j) => (
                           <div
@@ -259,19 +259,19 @@ export function TimelineView() {
                           />
                         ))}
                         
-                        {/* Planned bar */}
+                        {/* Planned bar (background) */}
                         {planned && (
                           <div
-                            className="absolute top-1 h-3.5 rounded bg-primary/20 border border-primary/30"
+                            className="absolute top-1 h-6 rounded bg-primary/20 border border-primary/30"
                             style={{ left: `${planned.left}%`, width: `${planned.width}%` }}
                             title={`Planned: ${entry.startDate} → ${entry.endDate}`}
                           />
                         )}
                         
-                        {/* Actual bar */}
+                        {/* Actual bar (overlaid on top of planned) */}
                         {actual && (
                           <div
-                            className={`absolute top-5.5 h-3.5 rounded ${
+                            className={`absolute top-2 h-4 rounded ${
                               endVariance !== null && endVariance > 0 
                                 ? 'bg-red-500/80' 
                                 : 'bg-green-500/80'
@@ -292,7 +292,7 @@ export function TimelineView() {
                         {/* If no actual bar, show progress on planned bar */}
                         {!actual && planned && progress > 0 && (
                           <div
-                            className="absolute top-5.5 h-3.5 rounded bg-primary"
+                            className="absolute top-2 h-4 rounded bg-primary"
                             style={{ left: `${planned.left}%`, width: `${planned.width * (progress / 100)}%` }}
                             title={`Progress: ${progress}%`}
                           />
