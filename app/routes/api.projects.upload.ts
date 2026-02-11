@@ -169,13 +169,32 @@ export async function action({ request }: Route.ActionArgs) {
       validation.tabs.push({ name: "SprintConfig", status: "missing", message: "SprintConfig sheet not found - defaults will be used" });
     }
 
+    // Validate Info sheet
+    if (sheetNames.includes("Info")) {
+      const sheet = workbook.Sheets["Info"];
+      const infoRows = xlsx.utils.sheet_to_json<Record<string, string>>(sheet, { header: 1 });
+      const contentRows = (infoRows as unknown as string[][]).filter((row: string[]) => {
+        if (Array.isArray(row)) {
+          return row.some((cell: string) => cell && String(cell).trim().length > 0);
+        }
+        return false;
+      });
+      if (contentRows.length > 0) {
+        validation.tabs.push({ name: "Info", status: "ok", message: `Project info found (${contentRows.length} lines)` });
+      } else {
+        validation.tabs.push({ name: "Info", status: "warning", message: "Info sheet exists but is empty" });
+      }
+    } else {
+      validation.tabs.push({ name: "Info", status: "missing", message: "Info sheet not found - will be created empty" });
+    }
+
     // Validate Metadata sheet (if present)
     if (sheetNames.includes("Metadata")) {
       validation.tabs.push({ name: "Metadata", status: "ok", message: "Project metadata found" });
     }
 
     // Check for unknown sheets
-    const knownSheets = ["Source", "People", "Tasks", "Timeline", "SprintConfig", "Metadata", "Meta", "TimelineUI", "GanttChart"];
+    const knownSheets = ["Source", "People", "Tasks", "Timeline", "SprintConfig", "Info", "Metadata", "Meta", "TimelineUI", "GanttChart"];
     const unknownSheets = sheetNames.filter((s: string) => !knownSheets.includes(s));
     if (unknownSheets.length > 0) {
       validation.tabs.push({

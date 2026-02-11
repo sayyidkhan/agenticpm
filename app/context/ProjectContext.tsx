@@ -203,7 +203,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasUnsavedChanges, canonicalText, activeFileName]);
+  }, [hasUnsavedChanges, canonicalText, parsed, activeFileName]);
 
   // Snapshot saved state
   const snapshotSavedState = useCallback((text: string, data: ProjectData) => {
