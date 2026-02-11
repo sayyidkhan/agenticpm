@@ -6,7 +6,8 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "gen:auth-env": "node -e 'console.log(`AUTH_USERS=${JSON.stringify(JSON.parse(require(\"fs\").readFileSync(\"user_credentials.json\",\"utf8\")))}`)'"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
