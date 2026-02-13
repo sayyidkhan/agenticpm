@@ -143,7 +143,7 @@ export function TimelineView() {
         </div>
       )}
 
-      {/* Gantt Chart with Day Grid */}
+      {/* Gantt Chart with Day-by-Day Grid */}
       {!isEditing && parsed.timeline.length > 0 && (() => {
         // Calculate overall date range from all entries
         const allDates: Date[] = [];
@@ -159,46 +159,52 @@ export function TimelineView() {
         const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
         const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
         
-        // Pad by a few days
-        minDate.setDate(minDate.getDate() - 2);
-        maxDate.setDate(maxDate.getDate() + 2);
+        // Pad by 1 day on each side
+        minDate.setDate(minDate.getDate() - 1);
+        maxDate.setDate(maxDate.getDate() + 1);
         
-        const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Generate week markers
-        const weekMarkers: { date: Date; label: string; position: number }[] = [];
-        const cursor = new Date(minDate);
-        // Align to next Monday
-        cursor.setDate(cursor.getDate() + ((8 - cursor.getDay()) % 7));
-        while (cursor <= maxDate) {
-          const dayOffset = Math.ceil((cursor.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
-          const position = (dayOffset / totalDays) * 100;
-          weekMarkers.push({
-            date: new Date(cursor),
-            label: `${cursor.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-            position,
-          });
-          cursor.setDate(cursor.getDate() + 7);
+        // Generate all days in range
+        const days: Date[] = [];
+        const dayCursor = new Date(minDate);
+        while (dayCursor <= maxDate) {
+          days.push(new Date(dayCursor));
+          dayCursor.setDate(dayCursor.getDate() + 1);
         }
         
-        const getBarPosition = (start?: string, end?: string) => {
-          if (!start || !end) return null;
-          const s = new Date(start);
-          const e = new Date(end);
-          const left = ((s.getTime() - minDate.getTime()) / (maxDate.getTime() - minDate.getTime())) * 100;
-          const width = ((e.getTime() - s.getTime()) / (maxDate.getTime() - minDate.getTime())) * 100;
-          return { left: Math.max(0, left), width: Math.max(1, width) };
+        const DAY_WIDTH = 36; // px per day column
+        const LABEL_WIDTH = 100; // px for sprint label column
+        const PROGRESS_WIDTH = 90; // px for progress column
+        const chartWidth = days.length * DAY_WIDTH;
+        
+        // Group days by month for the top header
+        const months: { label: string; span: number }[] = [];
+        let currentMonth = "";
+        for (const day of days) {
+          const monthLabel = day.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+          if (monthLabel !== currentMonth) {
+            months.push({ label: monthLabel, span: 1 });
+            currentMonth = monthLabel;
+          } else {
+            months[months.length - 1].span++;
+          }
+        }
+        
+        const getDayIndex = (dateStr: string) => {
+          const d = new Date(dateStr);
+          return Math.round((d.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
         };
         
         const getDaysDiff = (planned?: string, actual?: string) => {
           if (!planned || !actual) return null;
-          const p = new Date(planned);
-          const a = new Date(actual);
-          return Math.round((a.getTime() - p.getTime()) / (1000 * 60 * 60 * 24));
+          return Math.round((new Date(actual).getTime() - new Date(planned).getTime()) / (1000 * 60 * 60 * 24));
         };
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayIndex = Math.round((today.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
         
         return (
-          <div className="mb-8 rounded-lg border bg-card p-4 overflow-x-auto">
+          <div className="mb-8 rounded-lg border bg-card p-4">
             {/* Legend */}
             <div className="flex items-center gap-4 mb-3 text-[10px]">
               <div className="flex items-center gap-1">
@@ -219,112 +225,181 @@ export function TimelineView() {
               </div>
             </div>
             
-            <div style={{ minWidth: "600px" }}>
-              {/* Week header */}
-              <div className="relative h-6 mb-1 border-b">
-                {weekMarkers.map((marker, i) => (
-                  <div
-                    key={i}
-                    className="absolute text-[9px] text-muted-foreground -translate-x-1/2"
-                    style={{ left: `${marker.position}%` }}
-                  >
-                    {marker.label}
+            <div className="overflow-x-auto">
+              <div className="flex" style={{ minWidth: `${LABEL_WIDTH + chartWidth + PROGRESS_WIDTH}px` }}>
+                {/* Left: Sprint labels column */}
+                <div className="shrink-0" style={{ width: `${LABEL_WIDTH}px` }}>
+                  {/* Month header spacer */}
+                  <div className="h-5"></div>
+                  {/* Day header spacer */}
+                  <div className="h-8 border-b"></div>
+                  {/* Sprint label rows */}
+                  {parsed.timeline.map((entry, i) => (
+                    <div key={i} className="h-[52px] flex items-center justify-end pr-3">
+                      <span className="text-[11px] font-medium truncate">{entry.label}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Center: Day grid */}
+                <div className="flex-1 min-w-0" style={{ width: `${chartWidth}px` }}>
+                  {/* Month header row */}
+                  <div className="flex h-5">
+                    {months.map((m, i) => (
+                      <div
+                        key={i}
+                        className="text-[9px] font-semibold text-muted-foreground text-center border-l border-muted-foreground/15 flex items-center justify-center"
+                        style={{ width: `${m.span * DAY_WIDTH}px` }}
+                      >
+                        {m.label}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              
-              {/* Rows */}
-              <div className="space-y-2">
-                {parsed.timeline.map((entry, i) => {
-                  const planned = getBarPosition(entry.startDate, entry.endDate);
-                  const actual = getBarPosition(entry.actualStartDate, entry.actualEndDate);
-                  const endVariance = getDaysDiff(entry.endDate, entry.actualEndDate);
-                  const progress = entry.percentage ?? 0;
                   
-                  return (
-                    <div key={i} className="flex items-center gap-2">
-                      {/* Label */}
-                      <div className="w-24 shrink-0 text-right pr-2">
-                        <span className="text-[11px] font-medium truncate block">{entry.label}</span>
-                      </div>
-                      
-                      {/* Chart area — two sub-rows: planned on top, actual on bottom */}
-                      <div className="flex-1 flex flex-col">
-                        {/* Planned row */}
-                        <div className="relative h-4">
-                          {/* Grid lines */}
-                          {weekMarkers.map((marker, j) => (
-                            <div
-                              key={j}
-                              className="absolute top-0 bottom-0 border-l border-muted-foreground/10"
-                              style={{ left: `${marker.position}%` }}
-                            />
-                          ))}
-                          {planned && (
-                            <div
-                              className="absolute top-0.5 h-3 rounded bg-primary/20 border border-primary/30"
-                              style={{ left: `${planned.left}%`, width: `${planned.width}%` }}
-                              title={`Planned: ${entry.startDate} → ${entry.endDate}`}
-                            />
-                          )}
+                  {/* Day header row */}
+                  <div className="flex h-8 border-b">
+                    {days.map((day, i) => {
+                      const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                      const isToday = i === todayIndex;
+                      const dayNum = day.getDate();
+                      const dayName = day.toLocaleDateString("en-US", { weekday: "narrow" });
+                      return (
+                        <div
+                          key={i}
+                          className={`flex flex-col items-center justify-center border-l text-center ${
+                            isToday
+                              ? "bg-primary/15 border-l-primary/40 font-bold"
+                              : isWeekend
+                              ? "bg-muted/40 border-l-muted-foreground/10"
+                              : "border-l-muted-foreground/10"
+                          }`}
+                          style={{ width: `${DAY_WIDTH}px`, minWidth: `${DAY_WIDTH}px` }}
+                        >
+                          <span className={`text-[8px] leading-none ${isToday ? "text-primary" : "text-muted-foreground"}`}>{dayName}</span>
+                          <span className={`text-[10px] leading-tight font-medium ${isToday ? "text-primary" : isWeekend ? "text-muted-foreground/60" : "text-foreground"}`}>{dayNum}</span>
                         </div>
-                        {/* Actual row */}
-                        <div className="relative h-4">
-                          {/* Grid lines */}
-                          {weekMarkers.map((marker, j) => (
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Sprint bar rows */}
+                  {parsed.timeline.map((entry, i) => {
+                    const progress = entry.percentage ?? 0;
+                    const endVariance = getDaysDiff(entry.endDate, entry.actualEndDate);
+                    
+                    const plannedStart = entry.startDate ? getDayIndex(entry.startDate) : null;
+                    const plannedEnd = entry.endDate ? getDayIndex(entry.endDate) : null;
+                    const actualStart = entry.actualStartDate ? getDayIndex(entry.actualStartDate) : null;
+                    const actualEnd = entry.actualEndDate ? getDayIndex(entry.actualEndDate) : null;
+                    
+                    return (
+                      <div key={i} className="flex h-[52px] relative">
+                        {/* Day cell backgrounds */}
+                        {days.map((day, j) => {
+                          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                          const isToday = j === todayIndex;
+                          return (
                             <div
                               key={j}
-                              className="absolute top-0 bottom-0 border-l border-muted-foreground/10"
-                              style={{ left: `${marker.position}%` }}
-                            />
-                          ))}
-                          {actual && (
-                            <div
-                              className={`absolute top-0.5 h-3 rounded ${
-                                endVariance !== null && endVariance > 0 
-                                  ? 'bg-red-300/60' 
-                                  : 'bg-green-300/60'
+                              className={`border-l border-b ${
+                                isToday
+                                  ? "bg-primary/5 border-l-primary/30"
+                                  : isWeekend
+                                  ? "bg-muted/30 border-l-muted-foreground/10 border-b-muted-foreground/10"
+                                  : "border-l-muted-foreground/10 border-b-muted-foreground/10"
                               }`}
-                              style={{ left: `${actual.left}%`, width: `${actual.width}%` }}
-                              title={`Actual: ${entry.actualStartDate} → ${entry.actualEndDate}`}
-                            >
-                              {progress > 0 && (
-                                <div
-                                  className={`h-full ${progress < 100 ? 'rounded-l' : 'rounded'} ${
-                                    endVariance !== null && endVariance > 0
-                                      ? 'bg-red-500/80'
-                                      : 'bg-green-500/80'
-                                  }`}
-                                  style={{ width: `${Math.min(progress, 100)}%` }}
-                                />
-                              )}
-                            </div>
-                          )}
-                          {/* If no actual bar, show progress on planned range */}
-                          {!actual && planned && progress > 0 && (
-                            <div
-                              className="absolute top-0.5 h-3 rounded bg-primary"
-                              style={{ left: `${planned.left}%`, width: `${planned.width * (progress / 100)}%` }}
-                              title={`Progress: ${progress}%`}
+                              style={{ width: `${DAY_WIDTH}px`, minWidth: `${DAY_WIDTH}px` }}
                             />
-                          )}
-                        </div>
+                          );
+                        })}
+                        
+                        {/* Planned bar */}
+                        {plannedStart !== null && plannedEnd !== null && (
+                          <div
+                            className="absolute top-1.5 h-[18px] rounded bg-primary/15 border border-primary/25"
+                            style={{
+                              left: `${plannedStart * DAY_WIDTH}px`,
+                              width: `${Math.max((plannedEnd - plannedStart + 1) * DAY_WIDTH, DAY_WIDTH)}px`,
+                            }}
+                            title={`Planned: ${entry.startDate} → ${entry.endDate}`}
+                          />
+                        )}
+                        
+                        {/* Actual bar */}
+                        {actualStart !== null && actualEnd !== null && (
+                          <div
+                            className={`absolute bottom-1.5 h-[18px] rounded ${
+                              endVariance !== null && endVariance > 0
+                                ? "bg-red-300/50"
+                                : "bg-green-300/50"
+                            }`}
+                            style={{
+                              left: `${actualStart * DAY_WIDTH}px`,
+                              width: `${Math.max((actualEnd - actualStart + 1) * DAY_WIDTH, DAY_WIDTH)}px`,
+                            }}
+                            title={`Actual: ${entry.actualStartDate} → ${entry.actualEndDate}`}
+                          >
+                            {progress > 0 && (
+                              <div
+                                className={`h-full ${progress < 100 ? "rounded-l" : "rounded"} ${
+                                  endVariance !== null && endVariance > 0
+                                    ? "bg-red-500/70"
+                                    : "bg-green-500/70"
+                                }`}
+                                style={{ width: `${Math.min(progress, 100)}%` }}
+                              />
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* If no actual bar, show progress on planned range */}
+                        {actualStart === null && plannedStart !== null && plannedEnd !== null && progress > 0 && (
+                          <div
+                            className="absolute bottom-1.5 h-[18px] rounded bg-primary/60"
+                            style={{
+                              left: `${plannedStart * DAY_WIDTH}px`,
+                              width: `${Math.max((plannedEnd - plannedStart + 1) * DAY_WIDTH * (progress / 100), 4)}px`,
+                            }}
+                            title={`Progress: ${progress}%`}
+                          />
+                        )}
+                        
+                        {/* Today marker line */}
+                        {todayIndex >= 0 && todayIndex < days.length && (
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-primary/50 z-10"
+                            style={{ left: `${todayIndex * DAY_WIDTH + DAY_WIDTH / 2}px` }}
+                          />
+                        )}
                       </div>
-                      
-                      {/* Progress + Variance */}
-                      <div className="w-24 shrink-0 text-right">
+                    );
+                  })}
+                </div>
+                
+                {/* Right: Progress column */}
+                <div className="shrink-0" style={{ width: `${PROGRESS_WIDTH}px` }}>
+                  {/* Month header spacer */}
+                  <div className="h-5"></div>
+                  {/* Day header spacer */}
+                  <div className="h-8 border-b"></div>
+                  {/* Progress rows */}
+                  {parsed.timeline.map((entry, i) => {
+                    const progress = entry.percentage ?? 0;
+                    const endVariance = getDaysDiff(entry.endDate, entry.actualEndDate);
+                    return (
+                      <div key={i} className="h-[52px] flex items-center justify-end pr-2">
                         <span className="text-[11px] font-semibold">{progress}%</span>
                         {endVariance !== null && (
                           <span className={`text-[10px] ml-1 font-medium ${
-                            endVariance > 0 ? 'text-red-500' : endVariance < 0 ? 'text-green-500' : 'text-muted-foreground'
+                            endVariance > 0 ? "text-red-500" : endVariance < 0 ? "text-green-500" : "text-muted-foreground"
                           }`}>
-                            {endVariance > 0 ? `+${endVariance}d` : endVariance < 0 ? `${endVariance}d` : 'on time'}
+                            {endVariance > 0 ? `+${endVariance}d` : endVariance < 0 ? `${endVariance}d` : "on time"}
                           </span>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

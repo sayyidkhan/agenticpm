@@ -12,6 +12,11 @@ export interface Task {
   remarks?: string; // Additional notes or comments about the task
 }
 
+export interface NorthStarEntry {
+  person: string;
+  goal: string;
+}
+
 export interface TimelineEntry {
   label: string;
   description: string;
@@ -20,6 +25,7 @@ export interface TimelineEntry {
   endDate?: string; // Planned end date (ISO date string)
   actualStartDate?: string; // Actual start date (ISO date string)
   actualEndDate?: string; // Actual end date (ISO date string)
+  northStars?: NorthStarEntry[]; // Individual north star goals per person for this sprint
 }
 
 export interface SprintConfig {

@@ -23,9 +23,12 @@ The format MUST follow this exact structure:
 - <Name>: <responsibility1>, <responsibility2>, ...
 
 ## Timeline
-- <Period>: (YYYY-MM-DD to YYYY-MM-DD) [percentage%] {actual: YYYY-MM-DD to YYYY-MM-DD} <description>
+- <Period>: (YYYY-MM-DD to YYYY-MM-DD) [percentage%] {actual: YYYY-MM-DD to YYYY-MM-DD} <description> ★Person: Goal | Person: Goal★
   - Planned dates in parentheses (), actual dates in curly braces {actual: ...}
   - percentage is progress (0-100)
+  - North Stars are per-person goals for that sprint, enclosed in ★...★ delimiters at the END of the line
+  - Format: ★Person1: Their goal | Person2: Their goal★
+  - North Stars are OPTIONAL — only add them when the user explicitly asks
 
 ## Tasks
 - <Task description> (<Assignee>) {Sprint/Phase} <remarks> [status]
@@ -43,6 +46,7 @@ Rules:
 - Set Active Sprint to the first sprint/phase by default
 - Remarks can be added in angle brackets <remark text> before the status
 - Status MUST be one of: [todo], [in-progress], [done]. Do NOT use [pending], [not started], [completed], etc.
+- When the user mentions "north star", add it as ★Person: Goal★ on the relevant timeline entry, NOT as a task
 - Output ONLY the Markdown. No explanations, no code fences, no extra text.`;
 
 const UPDATE_SYSTEM_PROMPT = `You are an expert project manager AI. You receive a current project definition in structured Markdown and an update instruction. You must apply the instruction and return the FULL updated project Markdown.
@@ -61,9 +65,12 @@ The format MUST follow this exact structure:
 - <Name>: <responsibility1>, <responsibility2>, ...
 
 ## Timeline
-- <Period>: (YYYY-MM-DD to YYYY-MM-DD) [percentage%] {actual: YYYY-MM-DD to YYYY-MM-DD} <description>
+- <Period>: (YYYY-MM-DD to YYYY-MM-DD) [percentage%] {actual: YYYY-MM-DD to YYYY-MM-DD} <description> ★Person: Goal | Person: Goal★
   - Planned dates in parentheses (), actual dates in curly braces {actual: ...}
   - percentage is progress (0-100)
+  - North Stars are per-person goals for that sprint, enclosed in ★...★ delimiters at the END of the line
+  - Format: ★Person1: Their goal | Person2: Their goal★
+  - North Stars are OPTIONAL — only include them if they already exist or the user asks to add/modify them
 
 ## Tasks
 - <Task description> (<Assignee>) {Sprint/Phase} <remarks> [status]
@@ -84,6 +91,8 @@ Rules:
 - Status MUST be one of: [todo], [in-progress], [done]. Do NOT use [pending], [not started], [completed], etc.
 - When updating actual dates, use {actual: YYYY-MM-DD to YYYY-MM-DD} format
 - Preserve existing actual dates unless explicitly changed
+- IMPORTANT: When the user mentions "north star", add it as ★Person: Goal★ on the relevant timeline entry, NOT as a task. North stars are goals/focus areas, not tasks.
+- Preserve existing ★...★ north stars on timeline entries unless explicitly changed
 - Output ONLY the updated Markdown. No explanations, no code fences, no extra text.`;
 
 export async function createProjectFromPrompt(prompt: string): Promise<string> {

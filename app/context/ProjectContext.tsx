@@ -1,5 +1,6 @@
 import { createContext, useContext, useCallback, useState, useEffect, useRef, type ReactNode } from "react";
 import type { ProjectData, ProjectMeta, Person, Task, TimelineEntry } from "~/types/project";
+import { diffProjects, type ChangeSummary } from "~/lib/diff";
 import { parseProjectText, serializeProject } from "~/lib/parser";
 import {
   fetchProjects,
@@ -52,6 +53,8 @@ interface ProjectContextType {
   // AI
   createFromPrompt: (prompt: string) => Promise<void>;
   updateFromPrompt: (instruction: string) => Promise<void>;
+  changeSummary: ChangeSummary | null;
+  clearChangeSummary: () => void;
 
   // Session
   sessionId: string;
@@ -68,6 +71,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [parsed, setParsed] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [changeSummary, setChangeSummary] = useState<ChangeSummary | null>(null);
+  const clearChangeSummary = useCallback(() => setChangeSummary(null), []);
   const [isSaving, setIsSaving] = useState(false);
   const [activeFileName, setActiveFileName] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
@@ -514,9 +519,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(true);
     setError(null);
+    setChangeSummary(null);
     try {
       const currentSprint = parsed?.currentSprint;
       const currentInfo = parsed?.info;
+      const oldParsed = parsed;
       const newText = await aiUpdateProject(canonicalText, instruction, currentSprint);
       const result = parseProjectText(newText);
       // Preserve info — parseProjectText doesn't handle info
@@ -525,6 +532,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       }
       setCanonicalTextRaw(newText);
       setParsed(result);
+      // Compute change summary
+      if (oldParsed) {
+        setChangeSummary(diffProjects(oldParsed, result));
+      }
       // Auto-save will trigger via useEffect
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update project");
@@ -570,6 +581,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         saveSheet,
         createFromPrompt,
         updateFromPrompt,
+        changeSummary,
+        clearChangeSummary,
         sessionId,
       }}
     >

@@ -11,6 +11,7 @@ import { TaskListView } from "~/components/views/TaskListView";
 import { TimelineView } from "~/components/views/TimelineView";
 import { MatrixView } from "~/components/views/MatrixView";
 import { InfoView } from "~/components/views/InfoView";
+import { NorthStarsView } from "~/components/views/NorthStarsView";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs";
 import { Button } from "~/components/ui/button";
 import {
@@ -25,10 +26,10 @@ import {
   Calendar,
   Grid3X3,
   Info,
+  Star,
   Loader2,
   Circle,
   LogOut,
-  ChevronDown,
   Undo,
 } from "lucide-react";
 
@@ -92,12 +93,6 @@ function AppLayout() {
     }
     return true;
   });
-  const [tabsOpen, setTabsOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("tabs_open") !== "false";
-    }
-    return true;
-  });
 
   const handlePromptSelect = (prompt: string) => {
     promptPanelRef.current?.setPrompt(prompt);
@@ -135,10 +130,6 @@ function AppLayout() {
   useEffect(() => {
     localStorage.setItem("sidebar_open", String(sidebarOpen));
   }, [sidebarOpen]);
-
-  useEffect(() => {
-    localStorage.setItem("tabs_open", String(tabsOpen));
-  }, [tabsOpen]);
 
   const hasProject = !!parsed && !!activeFileName;
 
@@ -239,7 +230,7 @@ function AppLayout() {
             <EmptyState onPromptSelect={handlePromptSelect} />
           ) : (
             <Tabs defaultValue="source" className="flex flex-1 flex-col min-h-0">
-              <div className={`border-b transition-all duration-300 ease-in-out overflow-hidden ${tabsOpen ? "h-auto" : "h-0"}`}>
+              <div className="border-b">
                 <div className="px-4 pt-2 pb-2 flex items-center justify-between">
                   <TabsList>
                     <TabsTrigger value="source" className="gap-1.5">
@@ -258,6 +249,10 @@ function AppLayout() {
                       <Calendar className="h-3.5 w-3.5" />
                       Timeline
                     </TabsTrigger>
+                    <TabsTrigger value="northstars" className="gap-1.5">
+                      <Star className="h-3.5 w-3.5" />
+                      North Stars
+                    </TabsTrigger>
                     <TabsTrigger value="matrix" className="gap-1.5">
                       <Grid3X3 className="h-3.5 w-3.5" />
                       Matrix
@@ -269,14 +264,6 @@ function AppLayout() {
                   </TabsList>
                 </div>
               </div>
-              <button
-                onClick={() => setTabsOpen(!tabsOpen)}
-                className="h-8 border-b bg-background hover:bg-muted transition-colors flex items-center justify-center shrink-0 cursor-pointer"
-                title={tabsOpen ? "Collapse tabs" : "Expand tabs"}
-                type="button"
-              >
-                <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${tabsOpen ? "rotate-180" : ""}`} />
-              </button>
               <TabsContent value="source" className="flex-1 overflow-hidden">
                 <TextEditorView />
               </TabsContent>
@@ -288,6 +275,9 @@ function AppLayout() {
               </TabsContent>
               <TabsContent value="timeline" className="flex-1 overflow-hidden">
                 <TimelineView />
+              </TabsContent>
+              <TabsContent value="northstars" className="flex-1 overflow-hidden">
+                <NorthStarsView />
               </TabsContent>
               <TabsContent value="matrix" className="flex-1 overflow-hidden">
                 <MatrixView />

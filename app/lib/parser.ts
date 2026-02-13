@@ -1,4 +1,4 @@
-import type { ProjectData, Person, Task, TimelineEntry } from "~/types/project";
+import type { ProjectData, Person, Task, TimelineEntry, NorthStarEntry } from "~/types/project";
 
 export function parseProjectText(text: string): ProjectData {
   const lines = text.split("\n");
@@ -150,6 +150,21 @@ function parseTimelineEntry(content: string): TimelineEntry {
   
   const entry: TimelineEntry = { label, description };
   
+  // Extract North Stars ★Person: Goal | Person: Goal★
+  const northStarMatch = description.match(/★([^★]+)★/);
+  if (northStarMatch) {
+    const raw = northStarMatch[1].trim();
+    const entries: NorthStarEntry[] = raw.split("|").map(part => {
+      const colonIdx = part.indexOf(":");
+      if (colonIdx === -1) return { person: "", goal: part.trim() };
+      return { person: part.slice(0, colonIdx).trim(), goal: part.slice(colonIdx + 1).trim() };
+    }).filter(e => e.person && e.goal);
+    if (entries.length > 0) {
+      entry.northStars = entries;
+    }
+    description = description.replace(northStarMatch[0], "").trim();
+  }
+
   // Extract percentage [50%]
   const percentMatch = description.match(/\[(\d+)%\]/);
   if (percentMatch) {
@@ -262,6 +277,12 @@ export function serializeProject(project: ProjectData): string {
         line += ` {actual: ${entry.actualStartDate} to ${entry.actualEndDate}}`;
       }
       
+      // Add north stars (per-person goals)
+      if (entry.northStars && entry.northStars.length > 0) {
+        const parts = entry.northStars.map(ns => `${ns.person}: ${ns.goal}`);
+        line += ` ★${parts.join(" | ")}★`;
+      }
+
       // Add description
       if (entry.description) {
         line += ` ${entry.description}`;

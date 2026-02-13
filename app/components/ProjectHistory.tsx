@@ -17,6 +17,19 @@ interface UploadValidation {
   fileName: string;
 }
 
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function ProjectHistory() {
   const {
     projects,
@@ -160,6 +173,42 @@ export function ProjectHistory() {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            disabled={!activeFileName}
+            onClick={(e) => { if (activeFileName) handleDownload(activeFileName, e); }}
+            title="Download"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            disabled={!activeFileName}
+            onClick={() => {
+              if (activeFileName) {
+                const p = projects.find(p => p.fileName === activeFileName);
+                if (p) startRename(p.fileName, p.name);
+              }
+            }}
+            title="Rename"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            disabled={!activeFileName}
+            onClick={() => { if (activeFileName) setConfirmDelete(activeFileName); }}
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             onClick={() => fileInputRef.current?.click()}
             title="Upload Excel"
           >
@@ -189,14 +238,16 @@ export function ProjectHistory() {
               const isActive = project.fileName === activeFileName;
               const isRenaming = renamingFile === project.fileName;
               const isDeleting = confirmDelete === project.fileName;
+              const updatedDate = new Date(project.updatedAt);
+              const timeAgo = getTimeAgo(updatedDate);
 
               return (
                 <div
                   key={project.fileName}
-                  className={`group flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors ${
+                  className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm cursor-pointer transition-all ${
                     isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "hover:bg-sidebar-accent/50"
+                      ? "bg-primary/10 border border-primary/30 shadow-sm"
+                      : "hover:bg-muted/80 border border-transparent"
                   }`}
                   onClick={() => {
                     if (!isRenaming && !isDeleting) {
@@ -204,7 +255,11 @@ export function ProjectHistory() {
                     }
                   }}
                 >
-                  <FileSpreadsheet className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                    isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  }`}>
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </div>
 
                   {isRenaming ? (
                     <div className="flex-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -215,52 +270,32 @@ export function ProjectHistory() {
                           if (e.key === "Enter") submitRename();
                           if (e.key === "Escape") cancelRename();
                         }}
-                        className="h-6 text-xs px-1"
+                        className="h-7 text-xs px-1.5"
                         autoFocus
                       />
-                      <button onClick={submitRename} className="text-green-600 hover:text-green-700">
+                      <button onClick={submitRename} className="p-1 text-green-600 hover:text-green-700">
                         <Check className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={cancelRename} className="text-muted-foreground hover:text-foreground">
+                      <button onClick={cancelRename} className="p-1 text-muted-foreground hover:text-foreground">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ) : isDeleting ? (
                     <div className="flex-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-xs text-destructive flex-1">Delete?</span>
-                      <button onClick={() => handleDelete(project.fileName)} className="text-destructive hover:text-destructive/80">
+                      <span className="text-xs text-destructive flex-1 font-medium">Delete this project?</span>
+                      <button onClick={() => handleDelete(project.fileName)} className="p-1 text-destructive hover:text-destructive/80">
                         <Check className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => setConfirmDelete(null)} className="text-muted-foreground hover:text-foreground">
+                      <button onClick={() => setConfirmDelete(null)} className="p-1 text-muted-foreground hover:text-foreground">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2 flex-1 min-w-0">
-                      <span className="truncate font-medium text-sm">{project.name}</span>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleDownload(project.fileName, e)}
-                          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          title="Download Excel"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => startRename(project.fileName, project.name)}
-                          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          title="Rename"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(project.fileName)}
-                          className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={`block truncate text-sm ${isActive ? "font-semibold text-primary" : "font-medium"}`}>
+                        {project.name}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground mt-0.5">{timeAgo}</span>
                     </div>
                   )}
                 </div>

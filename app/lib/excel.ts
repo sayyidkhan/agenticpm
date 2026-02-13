@@ -121,8 +121,8 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
 
   // --- Color palette ---
   const PRIMARY = "FF2563EB";
+  const PRIMARY_LIGHT = "FFDBEAFE";
   const PRIMARY_BAR = "FF93C5FD";
-  const ACTUAL_BAR = "FF2563EB";
   const GREEN = "FF16A34A";
   const GREEN_BAR = "FF22C55E";
   const GREEN_BAR_LIGHT = "FF86EFAC";
@@ -131,38 +131,52 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
   const RED_BAR_LIGHT = "FFFCA5A5";
   const BORDER_COLOR = "FFE2E8F0";
   const TEXT_MUTED = "FF64748B";
+  const WEEKEND_BG = "FFF8FAFC";
+  const TODAY_BG = "FFEFF6FF";
+  const TODAY_BORDER = "FF93C5FD";
+  const HEADER_BG = "FFF1F5F9";
 
   const solidFill = (argb: string) => ({ type: "pattern" as const, pattern: "solid" as const, fgColor: { argb } });
+  const thinBorder = (argb: string) => ({ style: "thin" as const, color: { argb } });
 
   const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
   const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-  minDate.setDate(minDate.getDate() - 2);
-  maxDate.setDate(maxDate.getDate() + 2);
+  minDate.setDate(minDate.getDate() - 1);
+  maxDate.setDate(maxDate.getDate() + 1);
 
-  const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
+  // Generate all days
+  const days: Date[] = [];
+  const dayCursor = new Date(minDate);
+  while (dayCursor <= maxDate) {
+    days.push(new Date(dayCursor));
+    dayCursor.setDate(dayCursor.getDate() + 1);
+  }
+  const totalDays = days.length;
 
   const LABEL_COL = 1;
   const DAY_START_COL = 2;
-  const DAY_END_COL = DAY_START_COL + totalDays - 1;
-  const SUMMARY_COL = DAY_END_COL + 1;
+  const SUMMARY_COL = DAY_START_COL + totalDays;
 
   // Column widths
   ws.getColumn(LABEL_COL).width = 16;
   for (let d = 0; d < totalDays; d++) {
-    ws.getColumn(DAY_START_COL + d).width = 2.5;
+    ws.getColumn(DAY_START_COL + d).width = 4;
   }
   ws.getColumn(SUMMARY_COL).width = 14;
 
-  const dateToCol = (dateStr: string): number => {
+  const getDayIndex = (dateStr: string): number => {
     const d = new Date(dateStr);
-    const dayOffset = Math.round((d.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
-    return DAY_START_COL + Math.max(0, Math.min(dayOffset, totalDays - 1));
+    return Math.round((d.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
   };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayIndex = Math.round((today.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
 
   // --- Row 1: Legend ---
   let currentRow = 1;
   const legendRow = ws.getRow(currentRow);
-  legendRow.height = 18;
+  legendRow.height = 20;
   const legendCell = legendRow.getCell(LABEL_COL);
   legendCell.value = "GANTT CHART";
   legendCell.font = { bold: true, size: 11, color: { argb: PRIMARY } };
@@ -172,37 +186,100 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
   legendRow.getCell(leg1Col).fill = solidFill(PRIMARY_BAR);
   legendRow.getCell(leg1Col + 1).value = "Planned";
   legendRow.getCell(leg1Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
-  const leg2Col = leg1Col + 5;
+  const leg2Col = leg1Col + 4;
   legendRow.getCell(leg2Col).fill = solidFill(GREEN_BAR_LIGHT);
   legendRow.getCell(leg2Col + 1).value = "Remaining";
   legendRow.getCell(leg2Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
-  const leg3Col = leg2Col + 5;
+  const leg3Col = leg2Col + 4;
   legendRow.getCell(leg3Col).fill = solidFill(GREEN_BAR);
   legendRow.getCell(leg3Col + 1).value = "Done";
   legendRow.getCell(leg3Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
-  const leg4Col = leg3Col + 5;
+  const leg4Col = leg3Col + 4;
   legendRow.getCell(leg4Col).fill = solidFill(RED_BAR);
   legendRow.getCell(leg4Col + 1).value = "Behind";
   legendRow.getCell(leg4Col + 1).font = { size: 8, color: { argb: TEXT_MUTED } };
 
   currentRow++;
 
-  // --- Row 2: Week date headers ---
-  const weekRow = ws.getRow(currentRow);
-  weekRow.height = 16;
-  const cursor = new Date(minDate);
-  cursor.setDate(cursor.getDate() + ((8 - cursor.getDay()) % 7));
-  while (cursor <= maxDate) {
-    const col = dateToCol(cursor.toISOString().slice(0, 10));
-    const cell = weekRow.getCell(col);
-    cell.value = cursor.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    cell.font = { size: 7, color: { argb: TEXT_MUTED } };
-    cell.alignment = { horizontal: "left", vertical: "middle" };
-    cursor.setDate(cursor.getDate() + 7);
+  // --- Row 2: Month header (merged cells per month) ---
+  const monthRow = ws.getRow(currentRow);
+  monthRow.height = 16;
+  let monthStart = 0;
+  let currentMonth = "";
+  for (let d = 0; d <= totalDays; d++) {
+    const monthLabel = d < totalDays
+      ? days[d].toLocaleDateString("en-US", { month: "short", year: "numeric" })
+      : "";
+    if (monthLabel !== currentMonth || d === totalDays) {
+      if (currentMonth && d > monthStart) {
+        const startCol = DAY_START_COL + monthStart;
+        const endCol = DAY_START_COL + d - 1;
+        if (endCol > startCol) {
+          ws.mergeCells(currentRow, startCol, currentRow, endCol);
+        }
+        const mCell = monthRow.getCell(startCol);
+        mCell.value = currentMonth;
+        mCell.font = { bold: true, size: 8, color: { argb: TEXT_MUTED } };
+        mCell.alignment = { horizontal: "center", vertical: "middle" };
+        mCell.fill = solidFill(HEADER_BG);
+        // Fill remaining cells in merge with same fill
+        for (let c = startCol; c <= endCol; c++) {
+          monthRow.getCell(c).fill = solidFill(HEADER_BG);
+        }
+      }
+      monthStart = d;
+      currentMonth = monthLabel;
+    }
   }
-  weekRow.getCell(SUMMARY_COL).value = "Progress";
-  weekRow.getCell(SUMMARY_COL).font = { bold: true, size: 8, color: { argb: TEXT_MUTED } };
-  weekRow.getCell(SUMMARY_COL).alignment = { horizontal: "center", vertical: "middle" };
+  currentRow++;
+
+  // --- Row 3: Day-of-week header (M, T, W, T, F, S, S) ---
+  const dowRow = ws.getRow(currentRow);
+  dowRow.height = 14;
+  const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
+  for (let d = 0; d < totalDays; d++) {
+    const col = DAY_START_COL + d;
+    const cell = dowRow.getCell(col);
+    const isWeekend = days[d].getDay() === 0 || days[d].getDay() === 6;
+    const isToday = d === todayIndex;
+    cell.value = dayNames[days[d].getDay()];
+    cell.font = { size: 7, color: { argb: isToday ? PRIMARY : TEXT_MUTED } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    if (isToday) {
+      cell.fill = solidFill(TODAY_BG);
+      cell.font = { size: 7, bold: true, color: { argb: PRIMARY } };
+    } else if (isWeekend) {
+      cell.fill = solidFill(WEEKEND_BG);
+    } else {
+      cell.fill = solidFill(HEADER_BG);
+    }
+  }
+  currentRow++;
+
+  // --- Row 4: Day number header (1, 2, 3, ...) ---
+  const dayNumRow = ws.getRow(currentRow);
+  dayNumRow.height = 16;
+  for (let d = 0; d < totalDays; d++) {
+    const col = DAY_START_COL + d;
+    const cell = dayNumRow.getCell(col);
+    const isWeekend = days[d].getDay() === 0 || days[d].getDay() === 6;
+    const isToday = d === todayIndex;
+    cell.value = days[d].getDate();
+    cell.font = { size: 8, bold: isToday, color: { argb: isToday ? PRIMARY : isWeekend ? "FFB0B0B0" : "FF1E293B" } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = { bottom: thinBorder(BORDER_COLOR) };
+    if (isToday) {
+      cell.fill = solidFill(TODAY_BG);
+      cell.border = { bottom: thinBorder(TODAY_BORDER), left: thinBorder(TODAY_BORDER), right: thinBorder(TODAY_BORDER) };
+    } else if (isWeekend) {
+      cell.fill = solidFill(WEEKEND_BG);
+    }
+  }
+  // Summary header
+  dayNumRow.getCell(SUMMARY_COL).value = "Progress";
+  dayNumRow.getCell(SUMMARY_COL).font = { bold: true, size: 8, color: { argb: TEXT_MUTED } };
+  dayNumRow.getCell(SUMMARY_COL).alignment = { horizontal: "center", vertical: "middle" };
+  dayNumRow.getCell(SUMMARY_COL).border = { bottom: thinBorder(BORDER_COLOR) };
 
   currentRow++;
 
@@ -220,57 +297,69 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
     labelCell.font = { bold: true, size: 9 };
     labelCell.alignment = { vertical: "middle" };
 
-    // Monday grid lines on both rows
+    // Day cell backgrounds (weekend shading + today highlight + grid lines)
     for (let d = 0; d < totalDays; d++) {
-      const dayDate = new Date(minDate);
-      dayDate.setDate(dayDate.getDate() + d);
-      if (dayDate.getDay() === 1) {
-        const borderStyle = { left: { style: "thin" as const, color: { argb: BORDER_COLOR } } };
-        plannedRow.getCell(DAY_START_COL + d).border = borderStyle;
-        actualRow.getCell(DAY_START_COL + d).border = borderStyle;
+      const col = DAY_START_COL + d;
+      const isWeekend = days[d].getDay() === 0 || days[d].getDay() === 6;
+      const isToday = d === todayIndex;
+      const cellBorder = {
+        left: thinBorder(isToday ? TODAY_BORDER : BORDER_COLOR),
+        bottom: thinBorder(BORDER_COLOR),
+      };
+      if (isToday) {
+        plannedRow.getCell(col).fill = solidFill(TODAY_BG);
+        actualRow.getCell(col).fill = solidFill(TODAY_BG);
+        plannedRow.getCell(col).border = cellBorder;
+        actualRow.getCell(col).border = { left: thinBorder(TODAY_BORDER), bottom: thinBorder(BORDER_COLOR) };
+      } else if (isWeekend) {
+        plannedRow.getCell(col).fill = solidFill(WEEKEND_BG);
+        actualRow.getCell(col).fill = solidFill(WEEKEND_BG);
+        plannedRow.getCell(col).border = cellBorder;
+        actualRow.getCell(col).border = { left: thinBorder(BORDER_COLOR), bottom: thinBorder(BORDER_COLOR) };
+      } else {
+        plannedRow.getCell(col).border = cellBorder;
+        actualRow.getCell(col).border = { left: thinBorder(BORDER_COLOR), bottom: thinBorder(BORDER_COLOR) };
       }
     }
 
     // Planned bar (top row)
     if (entry.startDate && entry.endDate) {
-      const startCol = dateToCol(entry.startDate);
-      const endCol = dateToCol(entry.endDate);
-      for (let c = startCol; c <= endCol; c++) {
-        plannedRow.getCell(c).fill = solidFill(PRIMARY_BAR);
+      const startIdx = getDayIndex(entry.startDate);
+      const endIdx = getDayIndex(entry.endDate);
+      for (let d = startIdx; d <= endIdx && d < totalDays; d++) {
+        if (d >= 0) plannedRow.getCell(DAY_START_COL + d).fill = solidFill(PRIMARY_BAR);
       }
     }
 
-    // Actual bar (bottom row) — lighter color for full range, darker for done portion
+    // Actual bar (bottom row)
     if (entry.actualStartDate && entry.actualEndDate) {
-      let barColorDone = ACTUAL_BAR;
-      let barColorRemaining = PRIMARY_BAR;
+      let barColorDone = PRIMARY;
+      let barColorRemaining = PRIMARY_LIGHT;
       if (entry.endDate) {
         const variance = Math.round(
           (new Date(entry.actualEndDate).getTime() - new Date(entry.endDate).getTime()) / (1000 * 60 * 60 * 24)
         );
         if (variance > 0) { barColorDone = RED_BAR; barColorRemaining = RED_BAR_LIGHT; }
-        else if (variance <= 0) { barColorDone = GREEN_BAR; barColorRemaining = GREEN_BAR_LIGHT; }
+        else { barColorDone = GREEN_BAR; barColorRemaining = GREEN_BAR_LIGHT; }
       }
-      const startCol = dateToCol(entry.actualStartDate);
-      const endCol = dateToCol(entry.actualEndDate);
-      const barLen = endCol - startCol + 1;
+      const startIdx = getDayIndex(entry.actualStartDate);
+      const endIdx = getDayIndex(entry.actualEndDate);
+      const barLen = endIdx - startIdx + 1;
       const progress = entry.percentage ?? 0;
       const doneCols = Math.round(barLen * (progress / 100));
-      // Fill full bar with lighter color first
-      for (let c = startCol; c <= endCol; c++) {
-        actualRow.getCell(c).fill = solidFill(barColorRemaining);
+      for (let d = startIdx; d <= endIdx && d < totalDays; d++) {
+        if (d >= 0) actualRow.getCell(DAY_START_COL + d).fill = solidFill(barColorRemaining);
       }
-      // Overlay done portion with darker color
-      for (let c = startCol; c < startCol + doneCols; c++) {
-        actualRow.getCell(c).fill = solidFill(barColorDone);
+      for (let d = startIdx; d < startIdx + doneCols && d < totalDays; d++) {
+        if (d >= 0) actualRow.getCell(DAY_START_COL + d).fill = solidFill(barColorDone);
       }
     } else if (entry.startDate && entry.endDate && (entry.percentage ?? 0) > 0) {
-      const startCol = dateToCol(entry.startDate);
-      const endCol = dateToCol(entry.endDate);
-      const barLen = endCol - startCol + 1;
+      const startIdx = getDayIndex(entry.startDate);
+      const endIdx = getDayIndex(entry.endDate);
+      const barLen = endIdx - startIdx + 1;
       const progressCols = Math.round(barLen * ((entry.percentage ?? 0) / 100));
-      for (let c = startCol; c < startCol + progressCols; c++) {
-        actualRow.getCell(c).fill = solidFill(ACTUAL_BAR);
+      for (let d = startIdx; d < startIdx + progressCols && d < totalDays; d++) {
+        if (d >= 0) actualRow.getCell(DAY_START_COL + d).fill = solidFill(PRIMARY);
       }
     }
 
@@ -291,9 +380,13 @@ function addGanttChartSheet(workbook: any, data: ProjectData): void {
     summaryCell.value = summaryText;
     summaryCell.font = { bold: true, size: 9, color: { argb: summaryColor } };
     summaryCell.alignment = { horizontal: "center", vertical: "middle" };
+    summaryCell.border = { bottom: thinBorder(BORDER_COLOR) };
 
     currentRow += 2;
   }
+
+  // Freeze panes: freeze label column + header rows
+  ws.views = [{ state: "frozen" as const, xSplit: 1, ySplit: currentRow - entries.length * 2 - 1 + 1 }];
 }
 
 // --- Add styled TimelineUI sheet (data table only) ---
@@ -552,6 +645,20 @@ export async function readProject(fileName: string): Promise<{ meta: ProjectMeta
       }));
     }
 
+    // NorthStars sheet (per-person-per-sprint goals)
+    const northStarsSheet = workbook.Sheets["NorthStars"];
+    if (northStarsSheet) {
+      // @ts-expect-error - xlsx is dynamically loaded but properly typed at runtime
+      const nsRows = xlsx.utils.sheet_to_json<Record<string, string>>(northStarsSheet);
+      for (const nsRow of nsRows) {
+        const entry = data.timeline.find(t => t.label === nsRow.Sprint);
+        if (entry) {
+          if (!entry.northStars) entry.northStars = [];
+          entry.northStars.push({ person: nsRow.Person || "", goal: nsRow.Goal || "" });
+        }
+      }
+    }
+
     // Sprint Config sheet
     const sprintSheet = workbook.Sheets["SprintConfig"];
     if (sprintSheet) {
@@ -680,6 +787,19 @@ export async function writeProject(
     })),
   );
 
+  // NorthStars sheet (per-person-per-sprint goals)
+  const northStarRows: Record<string, string>[] = [];
+  for (const e of data.timeline) {
+    if (e.northStars) {
+      for (const ns of e.northStars) {
+        northStarRows.push({ Sprint: e.label, Person: ns.person, Goal: ns.goal });
+      }
+    }
+  }
+  if (northStarRows.length > 0) {
+    addDataSheet(workbook, "NorthStars", ["Sprint", "Person", "Goal"], northStarRows);
+  }
+
   // Sprint Config sheet
   if (data.sprintConfig) {
     addDataSheet(workbook, "SprintConfig",
@@ -805,6 +925,20 @@ export async function updateProjectSheets(
         actualStartDate: r.ActualStartDate || undefined,
         actualEndDate: r.ActualEndDate || undefined,
       }));
+    }
+
+    // Read existing NorthStars
+    const existingNSSheet = existing.Sheets["NorthStars"];
+    if (existingNSSheet) {
+      // @ts-expect-error - xlsx is dynamically loaded but properly typed at runtime
+      const nsRows = xlsx.utils.sheet_to_json<Record<string, string>>(existingNSSheet);
+      for (const nsRow of nsRows) {
+        const entry = timeline.find(t => t.label === nsRow.Sprint);
+        if (entry) {
+          if (!entry.northStars) entry.northStars = [];
+          entry.northStars.push({ person: nsRow.Person || "", goal: nsRow.Goal || "" });
+        }
+      }
     }
 
     // Read existing sprint config
