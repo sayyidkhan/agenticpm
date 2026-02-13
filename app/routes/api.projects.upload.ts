@@ -193,8 +193,24 @@ export async function action({ request }: Route.ActionArgs) {
       validation.tabs.push({ name: "Metadata", status: "ok", message: "Project metadata found" });
     }
 
+    // Validate NorthStars sheet
+    if (sheetNames.includes("NorthStars")) {
+      const sheet = workbook.Sheets["NorthStars"];
+      const rows = xlsx.utils.sheet_to_json<Record<string, string>>(sheet);
+      if (rows.length > 0) {
+        const hasRequired = rows.every((r: Record<string, string>) => r.Sprint && r.Person && r.Goal);
+        if (hasRequired) {
+          validation.tabs.push({ name: "NorthStars", status: "ok", message: `${rows.length} north star(s) found` });
+        } else {
+          validation.tabs.push({ name: "NorthStars", status: "warning", message: "Some rows missing Sprint/Person/Goal columns" });
+        }
+      } else {
+        validation.tabs.push({ name: "NorthStars", status: "warning", message: "NorthStars sheet is empty" });
+      }
+    }
+
     // Check for unknown sheets
-    const knownSheets = ["Source", "People", "Tasks", "Timeline", "SprintConfig", "Info", "Metadata", "Meta", "TimelineUI", "GanttChart"];
+    const knownSheets = ["Source", "People", "Tasks", "Timeline", "SprintConfig", "Info", "Metadata", "Meta", "TimelineUI", "GanttChart", "NorthStars"];
     const unknownSheets = sheetNames.filter((s: string) => !knownSheets.includes(s));
     if (unknownSheets.length > 0) {
       validation.tabs.push({
